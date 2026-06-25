@@ -32,4 +32,4 @@ git push --follow-tags
 
 ## Current
 
-`0.1.0` — initial development. Tools and config are not yet stable.
+`1.0.0` — stable release. All 4 tools finalized, 7 providers, parallel routing, full test suite.
