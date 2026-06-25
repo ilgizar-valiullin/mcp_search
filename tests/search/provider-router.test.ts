@@ -104,4 +104,79 @@ describe('ProviderRouter', () => {
     expect(p1.doSearchFn).not.toHaveBeenCalled();
     expect(p2.doSearchFn).toHaveBeenCalledOnce();
   });
+
+  it('should return first provider result in sequential mode', async () => {
+    const p1 = new MockProvider('Provider1', 1);
+    p1.doSearchFn.mockResolvedValueOnce(dummyResults);
+    const p2 = new MockProvider('Provider2', 1);
+
+    const router = new (class extends ProviderRouter {
+      constructor() {
+        super();
+        (this as any).providers = [p1, p2];
+      }
+    })() as any;
+
+    const result = await router.searchSequential('test', dummyOptions);
+    expect(p1.doSearchFn).toHaveBeenCalledOnce();
+    expect(p2.doSearchFn).not.toHaveBeenCalled();
+    expect(result).toEqual(dummyResults);
+  });
+
+  it('should fall through to next provider in sequential mode when first fails', async () => {
+    const p1 = new MockProvider('Provider1', 1);
+    const p2 = new MockProvider('Provider2', 1);
+
+    p1.doSearchFn.mockRejectedValueOnce(new Error('API down'));
+    p2.doSearchFn.mockResolvedValueOnce(dummyResults);
+
+    const router = new (class extends ProviderRouter {
+      constructor() {
+        super();
+        (this as any).providers = [p1, p2];
+      }
+    })() as any;
+
+    const result = await router.searchSequential('test', dummyOptions);
+    expect(p1.doSearchFn).toHaveBeenCalledOnce();
+    expect(p2.doSearchFn).toHaveBeenCalledOnce();
+    expect(result).toEqual(dummyResults);
+  });
+
+  it('should throw when all sequential providers fail', async () => {
+    const p1 = new MockProvider('Provider1', 1);
+
+    p1.doSearchFn.mockRejectedValueOnce(new Error('API down'));
+
+    const router = new (class extends ProviderRouter {
+      constructor() {
+        super();
+        (this as any).providers = [p1];
+      }
+    })() as any;
+
+    await expect(router.searchSequential('test', dummyOptions)).rejects.toThrow(
+      'All sequential providers failed',
+    );
+  });
+
+  it('should skip unhealthy provider in sequential mode', async () => {
+    const p1 = new MockProvider('Provider1', 1);
+    const p2 = new MockProvider('Provider2', 1);
+
+    p1.forceUnhealthy();
+    p2.doSearchFn.mockResolvedValueOnce(dummyResults);
+
+    const router = new (class extends ProviderRouter {
+      constructor() {
+        super();
+        (this as any).providers = [p1, p2];
+      }
+    })() as any;
+
+    const result = await router.searchSequential('test', dummyOptions);
+    expect(p1.doSearchFn).not.toHaveBeenCalled();
+    expect(p2.doSearchFn).toHaveBeenCalledOnce();
+    expect(result).toEqual(dummyResults);
+  });
 });

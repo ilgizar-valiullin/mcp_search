@@ -52,7 +52,10 @@ async function main(): Promise<void> {
   registerSearchTool(server, orchestrator);
   registerStatusTool(server, cache, router, budgetManager);
   registerGitHubSearchTool(server);
-  registerGitLabSearchTool(server);
+
+  if (config.GITLAB_TOKEN) {
+    registerGitLabSearchTool(server);
+  }
 
   let shuttingDown = false;
 
@@ -90,7 +93,6 @@ async function main(): Promise<void> {
   logger.info(
     {
       providers: {
-        searxng: config.SEARXNG_ENABLED && !!config.SEARXNG_URL,
         ddg: config.DDG_ENABLED,
         bing: config.BING_ENABLED,
         brave: !!config.BRAVE_API_KEY,

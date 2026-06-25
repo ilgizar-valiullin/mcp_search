@@ -12,7 +12,6 @@ vi.mock('../../../src/utils/config.js', () => ({
     DDG_DELAY_MS: 100,
     DDG_MAX_PER_MINUTE: 10,
     BING_ENABLED: false,
-    SEARXNG_URL: undefined,
     BRAVE_API_KEY: undefined,
     BRAVE_DAILY_LIMIT: 60,
     EXA_API_KEY: undefined,

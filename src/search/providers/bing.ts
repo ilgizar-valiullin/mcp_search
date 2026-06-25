@@ -1,5 +1,6 @@
 import { BaseProvider } from './base-provider.js';
 import { ProviderOptions, ProviderResult } from '../../utils/types.js';
+import { config } from '../../utils/config.js';
 import { logger } from '../../utils/logger.js';
 
 const BING_SEARCH_URL = 'https://www.bing.com/search';
@@ -9,29 +10,51 @@ export class BingProvider extends BaseProvider {
   readonly name = 'Bing';
   readonly tier = 1 as const;
 
+  private resultsPerPage: number;
+  private maxPages: number;
+
+  constructor() {
+    super();
+    this.resultsPerPage = config.BING_RESULTS_PER_PAGE;
+    this.maxPages = config.BING_MAX_PAGES;
+  }
+
   async doSearch(query: string, options: ProviderOptions): Promise<ProviderResult[]> {
-    const url = new URL(BING_SEARCH_URL);
-    url.searchParams.set('q', query);
-    url.searchParams.set('count', String(options.max_results * 2));
-    url.searchParams.set('hl', 'en');
+    const allResults: ProviderResult[] = [];
+    const needPages = Math.min(Math.ceil(options.max_results / this.resultsPerPage), this.maxPages);
 
-    logger.debug({ url: url.toString() }, 'Bing request');
+    for (let page = 0; page < needPages; page++) {
+      const url = new URL(BING_SEARCH_URL);
+      url.searchParams.set('q', query);
+      url.searchParams.set('count', String(this.resultsPerPage));
+      if (page > 0) {
+        url.searchParams.set('first', String(page * this.resultsPerPage + 1));
+      }
+      url.searchParams.set('hl', 'en');
 
-    const response = await fetch(url.toString(), {
-      signal: AbortSignal.timeout(10000),
-      headers: {
-        'User-Agent': DESKTOP_UA,
-        'Accept-Language': 'en-US,en;q=0.9',
-        Accept: 'text/html,application/xhtml+xml',
-      },
-    });
+      logger.debug({ url: url.toString() }, 'Bing request');
 
-    if (!response.ok) {
-      throw new Error(`Bing returned ${response.status}: ${response.statusText}`);
+      const response = await fetch(url.toString(), {
+        signal: AbortSignal.timeout(10000),
+        headers: {
+          'User-Agent': DESKTOP_UA,
+          'Accept-Language': 'en-US,en;q=0.9',
+          Accept: 'text/html,application/xhtml+xml',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Bing returned ${response.status}: ${response.statusText}`);
+      }
+
+      const html = await response.text();
+      const pageResults = this.parseResults(html, options.max_results - allResults.length);
+      allResults.push(...pageResults);
+
+      if (pageResults.length < this.resultsPerPage) break;
     }
 
-    const html = await response.text();
-    return this.parseResults(html, options.max_results);
+    return allResults;
   }
 
   private parseResults(html: string, maxResults: number): ProviderResult[] {

@@ -13,7 +13,6 @@ function loadConfig(): Config {
     mkdirSync(dataDir, { recursive: true });
   }
 
-  const hasSearxng = !!parsed.SEARXNG_URL && parsed.SEARXNG_ENABLED;
   const hasDdg = parsed.DDG_ENABLED;
   const hasBing = parsed.BING_ENABLED;
   const hasBrave = !!parsed.BRAVE_API_KEY;
@@ -21,9 +20,9 @@ function loadConfig(): Config {
   const hasExa = !!parsed.EXA_API_KEY;
   const hasFirecrawl = !!parsed.FIRECRAWL_API_KEY;
 
-  if (!hasSearxng && !hasDdg && !hasBing && !hasBrave && !hasTavily && !hasExa && !hasFirecrawl) {
+  if (!hasDdg && !hasBing && !hasBrave && !hasTavily && !hasExa && !hasFirecrawl) {
     throw new Error(
-      'No search providers configured. Set at least one: SEARXNG_URL, DDG_ENABLED=true, BING_ENABLED=true, BRAVE_API_KEY, TAVILY_API_KEY, EXA_API_KEY, or FIRECRAWL_API_KEY',
+      'No search providers configured. Set at least one: DDG_ENABLED=true, BING_ENABLED=true, BRAVE_API_KEY, TAVILY_API_KEY, EXA_API_KEY, or FIRECRAWL_API_KEY',
     );
   }
 

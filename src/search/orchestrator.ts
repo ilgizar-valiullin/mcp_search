@@ -172,11 +172,17 @@ export class Orchestrator {
 
     this.budgetManager.recordUsage('search');
 
-    const providerResults = await this.router.search(normalized, {
-      intent: request.intent,
-      freshness: request.freshness,
-      max_results: request.max_results * 2,
-    });
+    const searchTimeout = AbortSignal.timeout(config.SEARCH_TIMEOUT_MS);
+    const providerResults = await Promise.race([
+      this.router.search(normalized, {
+        intent: request.intent,
+        freshness: request.freshness,
+        max_results: request.max_results * 2,
+      }),
+      new Promise<never>((_, reject) => {
+        searchTimeout.onabort = () => reject(new Error(`Search timed out after ${config.SEARCH_TIMEOUT_MS}ms`));
+      }),
+    ]);
 
     let queryEmbedding: number[] | undefined;
 
@@ -189,7 +195,7 @@ export class Orchestrator {
     }
 
     const scoredResults = rerankResults(providerResults, request.intent, queryEmbedding);
-    const topResults = scoredResults.slice(0, request.max_results);
+    const topResults = scoredResults.slice(0, config.MAX_RESULTS_AFTER_RERANK);
 
     const searchResults: SearchResult[] = topResults.map((r) => ({
       title: r.title,

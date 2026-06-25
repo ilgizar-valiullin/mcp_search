@@ -12,31 +12,68 @@ All settings via `.env` file or environment variables.
 | `DATA_DIR` | `./data` | SQLite database directory |
 | `DB_FILENAME` | `search.db` | Database file name |
 
-### Providers — Tier 1
+### Provider Order & Execution
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `SEARXNG_URL` | — | SearXNG instance URL |
-| `SEARXNG_ENGINES` | `google,bing,duckduckgo` | SearXNG engines (comma-separated) |
+| `PROVIDER_ORDER` | `ddg,bing,brave,tavily,exa,firecrawl` | Priority order (comma-separated) |
+| `PROVIDER_EXECUTION_MODE` | `parallel` | `parallel` or `sequential` |
+| `MAX_PARALLEL_PROVIDERS` | `2` | How many providers to call concurrently (parallel mode) |
+
+### DuckDuckGo (Tier 1 — scrape, free)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
 | `DDG_ENABLED` | `true` | Enable DuckDuckGo |
 | `DDG_DELAY_MS` | `1000` | Delay between DDG requests (ms) |
 | `DDG_MAX_PER_MINUTE` | `10` | Max DDG requests per minute |
+| `DDG_RESULTS_PER_PAGE` | `10` | Results per page (DDG returns 10) |
+| `DDG_MAX_PAGES` | `2` | Max pages to scrape (up to 20 raw results) |
 
-### Providers — Tier 2
+### Bing (Tier 1 — scrape, free)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `BING_ENABLED` | `false` | Enable Bing |
+| `BING_RESULTS_PER_PAGE` | `10` | Results per page |
+| `BING_MAX_PAGES` | `1` | Max pages to scrape |
+
+### Brave (Tier 2 — API)
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `BRAVE_API_KEY` | — | Brave Search API key |
 | `BRAVE_DAILY_LIMIT` | `60` | Daily request limit |
+| `BRAVE_MAX_RESULTS` | `10` | Max raw results |
+
+### Tavily (Tier 2 — API)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
 | `TAVILY_API_KEY` | — | Tavily API key |
 | `TAVILY_DAILY_LIMIT` | `30` | Daily request limit |
+| `TAVILY_MAX_RESULTS` | `10` | Max raw results |
 
-### Providers — Tier 3
+### Exa (Tier 3 — API)
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `EXA_API_KEY` | — | Exa API key |
+| `EXA_MAX_RESULTS` | `10` | Max raw results |
+
+### Firecrawl (Tier 3 — API)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
 | `FIRECRAWL_API_KEY` | — | Firecrawl API key |
+| `FIRECRAWL_MAX_RESULTS` | `10` | Max raw results |
+
+### Search & Output
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SEARCH_TIMEOUT_MS` | `15000` | Max time for one search() call (ms) |
+| `MAX_RESULTS_AFTER_RERANK` | `10` | Final results returned to agent after reranking |
 
 ### Budget (agent protection)
 
@@ -51,26 +88,27 @@ All settings via `.env` file or environment variables.
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `CACHE_MAX_SIZE_MB` | `500` | Max SQLite database size (MB) |
-| `CACHE_EVICTION_INTERVAL_MIN` | `30` | Eviction interval (min) |
+| `CACHE_EVICTION_INTERVAL_MIN` | `30` | Eviction check interval (min) |
+| `CACHE_TTL_MINUTES` | `1440` | Default cache TTL (min, 24h) |
 
 ### Semantic Layer
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `EMBEDDING_MODEL` | `multilingual-e5-small` | Embedding model |
+| `SEMANTIC_ENABLED` | `false` | Enable semantic cache (requires ~120MB model) |
+| `EMBEDDING_MODEL` | `multilingual-e5-small` | Embedding model name |
 | `EMBEDDING_DIMENSION` | `384` | Vector dimension |
 | `SEMANTIC_THRESHOLD` | `0.92` | Similarity threshold for cache hit |
-| `SEMANTIC_ENABLED` | `false` | Enable semantic cache (V2) |
 
 ### Fetch Layer
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `FETCH_TIMEOUT_MS` | `10000` | Fetch timeout (ms) |
-| `FETCH_MAX_RETRIES` | `2` | Max retries |
+| `FETCH_MAX_RETRIES` | `2` | Max retries per URL |
 | `FETCH_MAX_BODY_SIZE` | `5242880` | Max response size (bytes, 5MB) |
 | `FETCH_CONCURRENT_LIMIT` | `3` | Concurrent fetches |
-| `FETCH_USER_AGENT` | `SearchMCP/1.0` | User-Agent header |
+| `FETCH_USER_AGENT` | `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36` | User-Agent header |
 | `CONTENT_MAX_LENGTH` | `8000` | Max content length (chars) |
 
 ### Reranking
@@ -85,60 +123,11 @@ All settings via `.env` file or environment variables.
 
 ---
 
-## Example `.env`
-
-```env
-# === General ===
-LOG_LEVEL=info
-DATA_DIR=./data
-
-# === Tier 1: SearXNG ===
-SEARXNG_URL=http://localhost:8888
-SEARXNG_ENGINES=google,bing,duckduckgo,stackoverflow
-
-# === Tier 1: DuckDuckGo ===
-DDG_ENABLED=true
-DDG_DELAY_MS=1000
-
-# === Tier 2: Brave ===
-BRAVE_API_KEY=
-BRAVE_DAILY_LIMIT=60
-
-# === Tier 2: Tavily ===
-TAVILY_API_KEY=
-TAVILY_DAILY_LIMIT=30
-
-# === Tier 3 (optional) ===
-EXA_API_KEY=
-FIRECRAWL_API_KEY=
-
-# === Budget ===
-BUDGET_MAX_SEARCHES=15
-BUDGET_MAX_FETCHES=30
-BUDGET_WINDOW_MINUTES=30
-
-# === Cache ===
-CACHE_MAX_SIZE_MB=500
-
-# === Semantic (V2) ===
-SEMANTIC_ENABLED=false
-EMBEDDING_MODEL=multilingual-e5-small
-SEMANTIC_THRESHOLD=0.92
-
-# === Fetch ===
-FETCH_TIMEOUT_MS=10000
-FETCH_CONCURRENT_LIMIT=3
-CONTENT_MAX_LENGTH=8000
-
-# === Reranking ===
-RERANK_ENABLED=true
-```
-
 ## Validation
 
 On startup, the server validates:
 
-1. **At least one provider available** — `DDG_ENABLED=true`, `SEARXNG_URL`, etc.
+1. **At least one provider available** — based on `PROVIDER_ORDER` and individual enable/API-key guards
 2. **API key format** — if provided, checks key format
 3. **DATA_DIR exists** — created if missing
 4. **SQLite works** — test query on startup

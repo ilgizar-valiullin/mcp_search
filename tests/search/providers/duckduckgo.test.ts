@@ -11,7 +11,6 @@ vi.mock('../../../src/utils/config.js', () => ({
     FETCH_USER_AGENT: 'SearchMCP/1.0',
     DATA_DIR: './data',
     DB_FILENAME: 'search.db',
-    SEARXNG_URL: undefined,
     BRAVE_API_KEY: undefined,
     BRAVE_DAILY_LIMIT: 60,
     TAVILY_API_KEY: undefined,

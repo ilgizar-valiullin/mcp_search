@@ -134,36 +134,56 @@ export const ConfigSchema = z.object({
   DATA_DIR: z.string().default('./data'),
   DB_FILENAME: z.string().default('search.db'),
 
-  // Tier 1: SearXNG
-  SEARXNG_ENABLED: z.boolean().or(z.string().transform(v => v === 'true')).default(false),
-  SEARXNG_URL: z.string().url().optional(),
-  SEARXNG_ENGINES: z.string().default('google,bing,duckduckgo,stackoverflow'),
-
-  // Tier 1: DuckDuckGo
+  // Providers — DuckDuckGo (scrape, free)
   DDG_ENABLED: z.boolean().or(z.string().transform(v => v === 'true')).default(true),
   DDG_DELAY_MS: z.number().or(z.string().transform(Number)).default(1000),
   DDG_MAX_PER_MINUTE: z.number().or(z.string().transform(Number)).default(10),
+  DDG_RESULTS_PER_PAGE: z.number().or(z.string().transform(Number)).default(10),
+  DDG_MAX_PAGES: z.number().or(z.string().transform(Number)).default(2),
 
-  // Tier 1: Bing
+  // Providers — Bing (scrape, free)
   BING_ENABLED: z.boolean().or(z.string().transform(v => v === 'true')).default(false),
+  BING_RESULTS_PER_PAGE: z.number().or(z.string().transform(Number)).default(10),
+  BING_MAX_PAGES: z.number().or(z.string().transform(Number)).default(1),
 
-  // Tier 2: Brave
+  // Providers — Brave (API key)
   BRAVE_API_KEY: z.string().optional(),
   BRAVE_DAILY_LIMIT: z.number().or(z.string().transform(Number)).default(60),
+  BRAVE_MAX_RESULTS: z.number().or(z.string().transform(Number)).default(10),
 
-  // Tier 2: Tavily
+  // Providers — Tavily (API key)
   TAVILY_API_KEY: z.string().optional(),
   TAVILY_DAILY_LIMIT: z.number().or(z.string().transform(Number)).default(30),
+  TAVILY_MAX_RESULTS: z.number().or(z.string().transform(Number)).default(10),
 
-  // Tier 3
+  // Providers — Exa (API key, trial 1000)
   EXA_API_KEY: z.string().optional(),
+  EXA_MAX_RESULTS: z.number().or(z.string().transform(Number)).default(10),
+
+  // Providers — Firecrawl (API key, trial 500 credits)
   FIRECRAWL_API_KEY: z.string().optional(),
+  FIRECRAWL_MAX_RESULTS: z.number().or(z.string().transform(Number)).default(10),
 
   // GitHub Search API (optional, without token: 60 req/hr)
   GITHUB_TOKEN: z.string().optional(),
 
   // GitLab Search API (optional)
   GITLAB_TOKEN: z.string().optional(),
+
+  // Provider order (comma-separated, uses name field)
+  PROVIDER_ORDER: z.string().default('ddg,bing,brave,tavily,exa,firecrawl'),
+
+  // Parallel — how many providers to call simultaneously (applied in parallel mode only)
+  MAX_PARALLEL_PROVIDERS: z.number().or(z.string().transform(Number)).default(2),
+
+  // Execution mode: 'parallel' — call providers concurrently, 'sequential' — stop on first success
+  PROVIDER_EXECUTION_MODE: z.enum(['parallel', 'sequential']).default('parallel'),
+
+  // Final results — how many results returned to agent after reranking
+  MAX_RESULTS_AFTER_RERANK: z.number().or(z.string().transform(Number)).default(10),
+
+  // Search timeout — total time budget for one search() call
+  SEARCH_TIMEOUT_MS: z.number().or(z.string().transform(Number)).default(15000),
 
   // Budget
   BUDGET_MAX_SEARCHES: z.number().or(z.string().transform(Number)).default(15),
@@ -173,6 +193,7 @@ export const ConfigSchema = z.object({
   // Cache
   CACHE_MAX_SIZE_MB: z.number().or(z.string().transform(Number)).default(500),
   CACHE_EVICTION_INTERVAL_MIN: z.number().or(z.string().transform(Number)).default(30),
+  CACHE_TTL_MINUTES: z.number().or(z.string().transform(Number)).default(1440),
 
   // Semantic
   SEMANTIC_ENABLED: z.boolean().or(z.string().transform(v => v === 'true')).default(false),
@@ -185,7 +206,7 @@ export const ConfigSchema = z.object({
   FETCH_MAX_RETRIES: z.number().or(z.string().transform(Number)).default(2),
   FETCH_MAX_BODY_SIZE: z.number().or(z.string().transform(Number)).default(5242880),
   FETCH_CONCURRENT_LIMIT: z.number().or(z.string().transform(Number)).default(3),
-  FETCH_USER_AGENT: z.string().default('SearchMCP/1.0'),
+  FETCH_USER_AGENT: z.string().default('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'),
   CONTENT_MAX_LENGTH: z.number().or(z.string().transform(Number)).default(8000),
 
   // Reranking

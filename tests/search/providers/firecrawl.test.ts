@@ -8,7 +8,6 @@ vi.mock('../../../src/utils/config.js', () => ({
     FIRECRAWL_API_KEY: 'test-key',
     DATA_DIR: './data',
     DB_FILENAME: 'search.db',
-    SEARXNG_URL: undefined,
     DDG_ENABLED: false,
     DDG_DELAY_MS: 100,
     DDG_MAX_PER_MINUTE: 10,

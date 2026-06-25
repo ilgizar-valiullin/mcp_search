@@ -32,4 +32,4 @@ git push --follow-tags
 
 ## Current
 
-`1.0.0` — stable release. All 4 tools finalized, 7 providers, parallel routing, full test suite.
+`1.1.0` — config overhaul: provider order, parallel/sequential mode, per-provider pagination limits, search timeout, max results after rerank, browser UA for fetch, SEARXNG removed.

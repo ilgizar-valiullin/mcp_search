@@ -8,7 +8,6 @@ vi.mock('../../../src/utils/config.js', () => ({
     BING_ENABLED: true,
     DATA_DIR: './data',
     DB_FILENAME: 'search.db',
-    SEARXNG_URL: undefined,
     DDG_ENABLED: false,
     DDG_DELAY_MS: 100,
     DDG_MAX_PER_MINUTE: 10,

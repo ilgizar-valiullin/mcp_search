@@ -7,7 +7,7 @@ import { ProviderHealth, ProviderOptions, ProviderResult, ProviderStats } from '
  */
 export interface SearchProvider {
   /**
-   * Name of the provider (e.g., 'SearXNG', 'DuckDuckGo')
+   * Name of the provider (e.g., 'DuckDuckGo', 'Brave')
    */
   readonly name: string;
 

@@ -13,9 +13,8 @@ Minimally working version with one provider and basic cache.
 - [x] Query Normalizer (lowercase, trim, cache key)
 - [x] SQLite cache (queries, results, pages)
 - [x] TTL-based eviction
-- [x] Provider: SearXNG adapter
-- [x] Provider: DuckDuckGo adapter (HTML scraping)
-- [x] Sequential fallback (SearXNG → DDG)
+- [x] DuckDuckGo adapter (HTML scraping)
+- [x] Sequential fallback (DDG → Bing)
 - [x] Content Fetcher (HTTP GET → readability → markdown)
 - [x] Budget Manager (search limit, fetch limit)
 - [x] Rate limiting (per-provider)
@@ -26,7 +25,7 @@ Minimally working version with one provider and basic cache.
 
 ### V1 Result
 
-Agent calls `search()` → SearXNG or DDG responds → results cached → when `include_content=true` pages are fetched and cleaned.
+Agent calls `search()` → first healthy provider responds → results cached → when `include_content=true` pages are fetched and cleaned.
 
 ---
 
@@ -104,7 +103,7 @@ gantt
     section V1 - MVP
     Project init + MCP transport     :v1_1, 2024-01-01, 1d
     SQLite cache + TTL               :v1_2, after v1_1, 1d
-    SearXNG + DDG providers          :v1_3, after v1_1, 1d
+    DDG + Bing providers             :v1_3, after v1_1, 1d
     Fetcher + Readability            :v1_4, after v1_2, 1d
     Budget + Rate limits             :v1_5, after v1_3, 1d
     Integration tests                :v1_6, after v1_5, 1d

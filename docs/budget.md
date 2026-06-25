@@ -140,7 +140,7 @@ class DeduplicationBuffer {
 ```
 [14:00:01] search("opencode plugins")
   → Budget: 1/15 searches
-  → Providers: SearXNG → 10 results
+  → Providers: DDG → 10 results
   → Cached under key "abc123"
 
 [14:00:15] search("opencode plugin docs")
@@ -177,7 +177,6 @@ interface ProviderRateLimit {
 
 // Defaults
 const RATE_LIMITS = {
-  searxng:     { rpm: 30, rpd: Infinity, rpm_month: Infinity },
   duckduckgo:  { rpm: 10, rpd: 200, rpm_month: Infinity },
   brave:       { rpm: 15, rpd: 60, rpm_month: 2000 },
   tavily:      { rpm: 10, rpd: 30, rpm_month: 1000 },

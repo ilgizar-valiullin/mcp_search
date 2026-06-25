@@ -52,30 +52,6 @@ BING_ENABLED=true
 
 ---
 
-### SearXNG
-
-| Parameter | Value |
-|-----------|-------|
-| Type | Self-hosted metasearch engine |
-| API | REST JSON API |
-| Limits | Unlimited (your own server) |
-| Key | Not required |
-| Intents | web, docs, news |
-
-**Features:**
-- Full control, no rate limits
-- Aggregates Google, Bing, DuckDuckGo, and others
-- Requires a deployed instance
-
-**Configuration:**
-```env
-SEARXNG_ENABLED=true
-SEARXNG_URL=http://localhost:8888
-SEARXNG_ENGINES=google,bing,duckduckgo,stackoverflow
-```
-
----
-
 ## Tier 2 — Official APIs (free tier)
 
 ### Brave Search API
@@ -172,9 +148,10 @@ flowchart TD
 3. Aggregate results
 4. Reranker deduplicates by normalized URL and sorts
 
-**Provider order:** DDG → Bing → SearXNG → Brave → Tavily → Exa → Firecrawl
+**Default provider order:** DDG → Bing → Brave → Tavily → Exa → Firecrawl  
+Custom order via `PROVIDER_ORDER` in `.env` (comma-separated names).
 
-If one of the two fails — results from the other are still returned. If both fail — error.
+If one provider fails — results from the other are still returned (parallel mode). Sequential mode stops on first success.
 
 ## Health Tracking
 

@@ -27,7 +27,7 @@ tests/
 │   ├── providers/
 │   │   ├── duckduckgo.test.ts   — DDG HTML scrape parsing
 │   │   ├── bing.test.ts         — Bing HTML scrape parsing
-│   │   ├── searxng.test.ts      — SearXNG REST API
+
 │   │   ├── brave.test.ts        — Brave Search API (mocked)
 │   │   ├── tavily.test.ts       — Tavily API (mocked)
 │   │   ├── exa.test.ts          — Exa API (mocked)

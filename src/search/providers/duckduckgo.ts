@@ -25,16 +25,21 @@ export class DuckDuckGoProvider extends BaseProvider {
     minuteStart: Date.now(),
   };
 
+  private resultsPerPage: number;
+  private maxPages: number;
+
   constructor() {
     super();
     this.delayMs = config.DDG_DELAY_MS;
     this.maxPerMinute = config.DDG_MAX_PER_MINUTE;
+    this.resultsPerPage = config.DDG_RESULTS_PER_PAGE;
+    this.maxPages = config.DDG_MAX_PAGES;
   }
 
   async doSearch(query: string, options: ProviderOptions): Promise<ProviderResult[]> {
     const allResults: ProviderResult[] = [];
-    const needPages = Math.ceil(options.max_results / 10);
-    const offsets = needPages > 1 ? [0, 10] : [0];
+    const needPages = Math.min(Math.ceil(options.max_results / this.resultsPerPage), this.maxPages);
+    const offsets = Array.from({ length: needPages }, (_, i) => i * this.resultsPerPage);
 
     for (const offset of offsets) {
       await this.enforceRateLimit();

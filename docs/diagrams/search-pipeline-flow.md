@@ -23,23 +23,20 @@ flowchart TD
     M -->|HIT and not expired| N[Return cached results]
     M -->|MISS or expired| O[Provider Router]
 
-    O --> P["Select first 2 healthy providers (parallel)"]
+    O --> P["Select N healthy providers (parallel / sequential per config)"]
     P --> Q1["DuckDuckGo"]
     P --> Q2["Bing"]
-    P --> Q3["SearXNG (if enabled)"]
-    P --> Q4["Brave / Tavily (if keys)"]
-    P --> Q5["Exa / Firecrawl (if keys)"]
+    P --> Q3["Brave / Tavily (if keys)"]
+    P --> Q4["Exa / Firecrawl (if keys)"]
 
     Q1 -->|Success| R[Raw results]
     Q2 -->|Success| R
     Q3 -->|Success| R
     Q4 -->|Success| R
-    Q5 -->|Success| R
-    Q1 -->|Fail| Q3
+    Q1 -->|Fail| Q2
     Q2 -->|Fail| Q3
     Q3 -->|Fail| Q4
-    Q4 -->|Fail| Q5
-    Q5 -->|Fail| ERR["Return error: ALL_PROVIDERS_FAILED"]
+    Q4 -->|Fail| ERR["Return error: ALL_PROVIDERS_FAILED"]
 
     R --> S[Deduplicate by URL]
     S --> T[Reranker]

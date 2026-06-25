@@ -12,7 +12,6 @@ vi.mock('../../../src/utils/config.js', () => ({
     DDG_DELAY_MS: 100,
     DDG_MAX_PER_MINUTE: 10,
     BING_ENABLED: false,
-    SEARXNG_URL: undefined,
     TAVILY_API_KEY: undefined,
     TAVILY_DAILY_LIMIT: 30,
     EXA_API_KEY: undefined,

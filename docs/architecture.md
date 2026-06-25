@@ -17,9 +17,8 @@ flowchart TD
     F -->|Cache MISS| G[Provider Router]
     G --> H1[Tier 1: DuckDuckGo]
     G --> H2[Tier 1: Bing]
-    G --> H3[Tier 1: SearXNG]
-    G --> H4[Tier 2: Brave / Tavily]
-    G --> H5[Tier 3: Exa / Firecrawl]
+    G --> H3[Tier 2: Brave / Tavily]
+    G --> H4[Tier 3: Exa / Firecrawl]
     H1 --> I[Result Aggregator]
     H2 --> I
     H3 --> I
@@ -144,7 +143,7 @@ sequenceDiagram
     MCP->>EC: get("abc123")
     EC-->>MCP: null (cache miss)
     MCP->>PR: search(query, intent, freshness)
-    PR->>SP: SearXNG.search(query)
+    PR->>SP: search(query)
     SP-->>PR: results[]
     PR-->>MCP: results[]
     MCP->>RR: rerank(results, queryEmbedding)
@@ -251,4 +250,4 @@ interface ProviderStats {
 2. **Graceful Degradation** — if Tier 1 fails, fallback to Tier 2/3
 3. **Cache First** — semantic → exact → provider
 4. **Budget Safety** — hard limits on searches and fetches
-5. **Local First** — prefer SearXNG and local embeddings when available
+5. **Cache First** — semantic → exact → provider

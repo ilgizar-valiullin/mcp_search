@@ -6,8 +6,6 @@ import { BraveProvider } from '../../src/search/providers/brave.js';
 import { TavilyProvider } from '../../src/search/providers/tavily.js';
 import { ExaProvider } from '../../src/search/providers/exa.js';
 import { FirecrawlProvider } from '../../src/search/providers/firecrawl.js';
-import { SearxngProvider } from '../../src/search/providers/searxng.js';
-
 const QUERY = 'rust programming language';
 const OPTIONS = { intent: 'web' as const, freshness: 'any' as const, max_results: 3 };
 const TIMEOUT = 20000;
@@ -79,13 +77,5 @@ describe.concurrent('Provider Integration Tests', () => {
     });
   });
 
-  (config.SEARXNG_URL && config.SEARXNG_ENABLED ? describe : describe.skip)('SearXNG (live)', () => {
-    it('should return results from live API', { timeout: TIMEOUT }, async () => {
-      const provider = new SearxngProvider();
-      const healthy = await provider.healthCheck();
-      expect(healthy).toBe(true);
-      const results = await provider.search(QUERY, OPTIONS);
-      expect(results.length).toBeGreaterThan(0);
-    });
-  });
+
 });
