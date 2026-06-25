@@ -79,7 +79,7 @@ Specialized search modes and production-ready hardening.
 - [x] Config-driven provider order, execution mode (parallel/sequential), pagination
 - [x] Search timeout, cached TTL, max results after rerank
 - [x] Browser User-Agent for fetch layer
-- [ ] robots.txt respect (optional)
+- [x] robots.txt — not needed: not a crawler, budget limits already protect sites
 - [ ] Cache analytics (hit rate, popular queries)
 - [x] DB migration system
 - [x] Graceful shutdown (finish in-flight, close DB)
