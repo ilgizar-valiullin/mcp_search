@@ -23,7 +23,6 @@ flowchart TD
     H2 --> I
     H3 --> I
     H4 --> I
-    H5 --> I
     I --> J[Reranker]
     J --> K{include_content?}
     K -->|Yes| L[Content Fetcher]
