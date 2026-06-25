@@ -75,10 +75,13 @@ Specialized search modes and production-ready hardening.
 - [x] Provider: Exa adapter
 - [x] Provider: Firecrawl adapter
 - [x] Parallel multi-provider queries
-- [ ] Result aggregation across multiple providers
+- [x] Result aggregation across multiple providers
+- [x] Config-driven provider order, execution mode (parallel/sequential), pagination
+- [x] Search timeout, cached TTL, max results after rerank
+- [x] Browser User-Agent for fetch layer
 - [ ] robots.txt respect (optional)
 - [ ] Cache analytics (hit rate, popular queries)
-- [ ] DB migration system
+- [x] DB migration system
 - [x] Graceful shutdown (finish in-flight, close DB)
 - [ ] Optional vector index (for large cached query volumes)
 - [x] Comprehensive test suite
@@ -86,10 +89,11 @@ Specialized search modes and production-ready hardening.
 - [ ] Docker image
 - [ ] Documentation: deployment guide
 - [x] CI workflow (Node 20/22, npm ci, build, test)
+- [x] GitLab tool hidden when token absent
 
 ### V3 Result
 
-Production-ready MCP Search Server with 7 providers, specialized search modes, health monitoring, and analytics.
+Production-ready MCP Search Server with 6 providers, GitHub/GitLab search, config-driven provider order, parallel/sequential execution, per-provider pagination limits, and full test suite.
 
 ---
 
