@@ -57,28 +57,44 @@ export abstract class BaseProvider implements SearchProvider {
   protected limitToday: number | null = null;
 
   /**
+   * Per-provider request queue — serialises concurrent calls to the same provider
+   * so only one `doSearch` runs at a time. Each call chains onto the previous
+   * call via a promise chain, creating an implicit FIFO queue per instance.
+   */
+  private requestQueue: Promise<void> = Promise.resolve();
+
+  /**
    * Main search execution implementation.
    */
   abstract doSearch(query: string, options: ProviderOptions): Promise<ProviderResult[]>;
 
   /**
    * Wrapper around doSearch that tracks health, latency, and errors.
+   *
+   * Blocks until the previous request to this provider completes, then
+   * re-checks health before proceeding. This ensures concurrent tool calls
+   * from the agent are serialised per provider.
    */
   async search(query: string, options: ProviderOptions): Promise<ProviderResult[]> {
-    if (!this.health.is_healthy) {
-      throw new Error(`Provider ${this.name} is currently unhealthy`);
-    }
+    const prev = this.requestQueue;
+    let release: () => void;
+    this.requestQueue = new Promise<void>((r) => { release = r; });
+    await prev;
 
-    const start = Date.now();
     try {
+      if (!this.health.is_healthy) {
+        throw new Error(`Provider ${this.name} is currently unhealthy`);
+      }
+
+      const start = Date.now();
       const results = await this.doSearch(query, options);
-      const latency = Date.now() - start;
-      
-      this.recordSuccess(latency);
+      this.recordSuccess(Date.now() - start);
       return results;
     } catch (error) {
       this.recordError(error instanceof Error ? error.message : String(error));
       throw error;
+    } finally {
+      release!();
     }
   }
 

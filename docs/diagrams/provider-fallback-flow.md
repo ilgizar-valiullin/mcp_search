@@ -1,5 +1,21 @@
 # Provider Fallback Flow
 
+## BaseProvider — per-instance request queue
+
+```mermaid
+flowchart TD
+    A[provider.search] --> B[save prev = this.requestQueue]
+    B --> C[set this.requestQueue = new Promise(release)]
+    C --> D[await prev]
+    D --> E{health.is_healthy?}
+    E -- No --> F[release, throw unhealthy]
+    E -- Yes --> G[doSearch + recordSuccess / catch + recordError]
+    G --> H[release]
+    H --> I[return results / throw]
+```
+
+Multiple concurrent calls chain on the same promise — each waits for the previous `release()` before proceeding. This serialises `doSearch` per provider instance.
+
 ## searchParallel (per-slot fallback)
 
 ```mermaid
@@ -14,7 +30,7 @@ flowchart TD
     G --> H{healthCheck?}
     H -- unhealthy --> I[log warn, continue loop]
     I --> E
-    H -- healthy --> J[provider.search]
+    H -- healthy --> J[provider.search  (goes through request queue)]
     J --> K{results > 0?}
     K -- Yes --> L[allResults.push, slot done - return]
     K -- No --> M[log warn empty, continue loop]
@@ -37,7 +53,7 @@ flowchart TD
     A[searchSequential] --> B[Iterate this.providers one by one]
     B --> C{healthCheck?}
     C -- unhealthy/skip --> D[continue to next provider]
-    C -- healthy --> E[provider.search]
+    C -- healthy --> E[provider.search  (goes through request queue)]
     E --> F{results.length > 0?}
     F -- Yes --> G[Return results immediately]
     F -- No --> D
