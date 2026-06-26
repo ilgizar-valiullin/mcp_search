@@ -31,6 +31,9 @@ export class BingProvider extends BaseProvider {
         url.searchParams.set('first', String(page * this.resultsPerPage + 1));
       }
       url.searchParams.set('hl', 'en');
+      url.searchParams.set('cc', 'US');
+      url.searchParams.set('mkt', 'en-US');
+      url.searchParams.set('setlang', 'en-US');
 
       logger.debug({ url: url.toString() }, 'Bing request');
 
@@ -75,9 +78,28 @@ export class BingProvider extends BaseProvider {
       const displayUrl = cite ? this.decodeEntities(cite[1].replace(/<[^>]*>/g, '').trim()) : '';
 
       const capMatch = block.match(/<div class="b_caption"[^>]*>([\s\S]*?)<\/div>/i);
-      const snippet = capMatch
+      const rawSnippet = capMatch
         ? this.decodeEntities(capMatch[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim())
         : '';
+
+      let publishedDate: string | undefined;
+      let snippet = rawSnippet;
+
+      const dateSpan = block.match(/<span[^>]*>([A-Z][a-z]+ \d{1,2}, \d{4})<\/span>/);
+      if (dateSpan) {
+        try {
+          const parsed = new Date(dateSpan[1]);
+          if (!isNaN(parsed.getTime())) {
+            publishedDate = parsed.toISOString();
+            snippet = rawSnippet
+              .replace(dateSpan[1], '')
+              .replace(/^[\s·\u00b7\u2022]+/, '')
+              .trim();
+          }
+        } catch {
+          // ignore parse error
+        }
+      }
 
       const finalUrl = displayUrl || url;
       if (title && finalUrl) {
@@ -86,9 +108,21 @@ export class BingProvider extends BaseProvider {
           title,
           url: finalUrl,
           snippet,
+          published_date: publishedDate,
           raw_position: position,
           provider: 'bing',
         });
+      }
+    }
+
+    if (results.length === 0) {
+      const hasCaptcha = /captcha|verify|blocked|challenge/i.test(html);
+      if (hasCaptcha) {
+        throw new Error('Bing returned a captcha/blocking page');
+      }
+      const hasSearchResults = /id="b_results"|class="b_algo"/i.test(html);
+      if (!hasSearchResults) {
+        throw new Error('Bing HTML structure may have changed — no result blocks found in response');
       }
     }
 
@@ -101,6 +135,7 @@ export class BingProvider extends BaseProvider {
       .replace(/&lt;/g, '<')
       .replace(/&gt;/g, '>')
       .replace(/&quot;/g, '"')
+      .replace(/&nbsp;/g, ' ')
       .replace(/&#x27;/g, "'")
       .replace(/&#x2F;/g, '/')
       .replace(/&#(\d+);/g, (_m: string, n: string) => String.fromCharCode(parseInt(n, 10)));

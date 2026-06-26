@@ -46,7 +46,7 @@ Semantic cache and official API providers.
 - [x] Reranker: freshness scoring
 - [x] Reranker: position blending
 - [x] Weighted final score
-- [x] Intent-aware reranking weights
+- [x] Intent-independent reranking weights
 - [x] Deduplication by URL
 - [x] Provider health tracking
 - [x] Provider health recovery (5-min retry)
@@ -69,7 +69,8 @@ Specialized search modes and production-ready hardening.
 - [x] GitHub-specific search (GitHub API, repos/code/issues/users)
 - [x] GitLab-specific search (GitLab API, projects/issues/MRs/blobs)
 - [x] Docs-specific search — covered by `intent: "docs"` + reranker, separate tool not needed
-- [x] Intent routing — not needed, agent selects intent explicitly
+- [x] Intent routing via NLI zero-shot (DeBERTa-v3-xsmall, 4 labels, softmax)
+- [x] NLI-based reranking (intent-independent: 0.9 NLI + 0.04 domain + 0.03 freshness + 0.03 position)
 - [ ] Advanced ranking: learning-to-rank based on agent feedback
 - [ ] Provider health scoring (composite: latency + error rate + quality)
 - [x] Provider: Exa adapter
@@ -121,7 +122,6 @@ gantt
     
     section V3 - Specialization
     GitHub search                    :v3_1, after v2_4, 3d
-    Docs search                      :v3_2, after v2_4, 2d
     Tier 3 providers                 :v3_3, after v2_5, 3d
     Advanced ranking                 :v3_4, after v3_1, 3d
     Production hardening             :v3_5, after v3_4, 3d

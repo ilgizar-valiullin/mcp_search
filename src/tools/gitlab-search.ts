@@ -3,12 +3,6 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { config } from '../utils/config.js';
 import { logger } from '../utils/logger.js';
 
-const GitLabSearchSchema = z.object({
-  query: z.string().min(1, 'Query cannot be empty'),
-  scope: z.enum(['projects', 'issues', 'merge_requests', 'blobs']).default('projects'),
-  page: z.number().int().min(1).default(1),
-});
-
 interface GitLabProject {
   id: number;
   name: string;
@@ -51,15 +45,21 @@ interface GitLabBlob {
 }
 
 export function registerGitLabSearchTool(server: McpServer): void {
+  const schema = z.object({
+    query: z.string().min(1, 'Query cannot be empty'),
+    scope: z.enum(['projects', 'issues', 'merge_requests', 'blobs']).default('projects'),
+    page: z.number().int().min(1).default(1),
+  });
+
   server.registerTool(
     'gitlab_search',
     {
       description: 'Search GitLab projects, issues, merge requests, or code (blobs)',
-      inputSchema: GitLabSearchSchema,
+      inputSchema: schema,
     },
     async (args) => {
       try {
-        const { query, scope, page } = GitLabSearchSchema.parse(args);
+        const { query, scope, page } = schema.parse(args);
 
         logger.info({ query, scope }, 'GitLab search requested');
 

@@ -53,15 +53,25 @@ Copy `.env.example` to `.env` and set your API keys. No keys are required — Du
 ```typescript
 search({
   query: string,
-  freshness?: "any" | "day" | "week" | "month",
   include_content?: boolean   // fetch page content as markdown
 })
 ```
 
 Returns merged results from the first 2 healthy providers (parallel), deduplicated and reranked by relevance.
 
-Intent classification (`INTENT_CLASSIFICATION_ENABLED=true` by default): the server auto-detects
-query intent (github / docs / news / web) via embedding zero-shot with confidence + ambiguity gates.
+Intent classification runs automatically (no `intent` parameter). The server detects query intent
+(github / docs / news / web) via NLI zero-shot (DeBERTa-v3-xsmall).
+
+### NLI Reranking
+
+Every search result is scored against the query using the same NLI model:
+
+- **Model**: `Xenova/nli-deberta-v3-xsmall` (177M params, ONNX-optimized)
+- **Inference**: ~10–15ms per result on CPU, ~300ms for 20 results (parallelized)
+- **Score**: `0.9 * NLI(query, snippet) + 0.04 * domain + 0.03 * freshness + 0.03 * position`
+- **Config**: Override via `INTENT_CLASSIFIER_MODEL` in `.env`
+
+The NLI model loads lazily on first request and is shared between intent classification and reranking.
 
 ### `github_search`
 
@@ -101,7 +111,7 @@ Returns provider health, cache stats, budget state, uptime.
 
 [Pipeline](docs/diagrams/search-pipeline-flow.md)
 
-Core pipeline: `Normalize → Budget Check → Cache → Router (parallel 2) → Rerank → Cache → Respond`
+Core pipeline: `Budget Check → Normalize → Classify (intent + freshness) → Cache → Router (parallel 2) → Rerank → Cache → Respond`
 
 Full docs:
 - [Architecture](docs/architecture.md)

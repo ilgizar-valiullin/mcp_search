@@ -2,201 +2,116 @@
 
 ## Overview
 
-After receiving results from providers (one or multiple), final reranking is applied. The goal is to sort results by actual usefulness to the agent, not by raw search engine position.
+After receiving results from providers, results are deduplicated by URL and then scored.
+The primary signal is **NLI entailment** — the same DeBERTa-v3-xsmall model used for
+intent classification and freshness detection.
 
 ## Scoring Formula
 
 ```
-final_score = w1 * semantic_similarity
-            + w2 * domain_quality
-            + w3 * freshness_score
-            + w4 * position_score
+final_score = 0.9 * nli_entailment(query, snippet)
+            + 0.04 * domain_quality
+            + 0.03 * implicit_freshness
+            + 0.03 * position_score
 ```
 
-### Default Weights
+The weights are fixed — a single formula for all queries.
 
-| Factor | Weight | Description |
-|--------|--------|-------------|
-| `semantic_similarity` | 0.35 | Cosine similarity of query embedding and snippet |
-| `domain_quality` | 0.30 | Domain quality (predefined list) |
-| `freshness_score` | 0.15 | How recent the result is |
-| `position_score` | 0.20 | Position in original provider results |
+## Components
 
-### Intent-Based Weight Adjustment
+### 1. NLI Entailment (weight 0.9)
 
-| Intent | semantic | domain | freshness | position |
-|--------|----------|--------|-----------|----------|
-| `web` | 0.35 | 0.25 | 0.15 | 0.25 |
-| `docs` | 0.30 | **0.40** | 0.10 | 0.20 |
-| `github` | 0.25 | **0.35** | 0.20 | 0.20 |
-| `news` | 0.20 | 0.15 | **0.45** | 0.20 |
-
----
-
-## Scoring Components
-
-### 1. Semantic Similarity (0.0 – 1.0)
-
-Cosine similarity between query embedding and result snippet/title embedding.
-
-```typescript
-function semanticScore(queryEmbedding: number[], resultText: string): number {
-  const resultEmbedding = embeddingService.embed(resultText);
-  return cosineSimilarity(queryEmbedding, resultEmbedding);
-}
+```
+nli_entailment = softmax(NLI(snippet, query)) → entailment probability
 ```
 
-**Without embeddings:** `semantic_similarity = 0.5` for all results.
+- **Model**: `Xenova/nli-deberta-v3-xsmall` (177M params)
+- **Text**: `snippet || title` (512 chars max)
+- **Fallback**: 0.5 if model unavailable or empty text
+- **Load**: ~10–15ms per result, ~300ms for 20 results
 
-### 2. Domain Quality (0.0 – 1.0)
+The same model instance is shared with intent classification and freshness
+detection — lazy-loaded on first request.
 
-Predefined domain scoring tailored for development.
+### 2. Domain Quality (weight 0.04)
 
-```typescript
-const DOMAIN_SCORES: Record<string, number> = {
-  // Tier S — official sources
-  "github.com":           0.95,
-  "docs.github.com":      0.95,
-  "developer.mozilla.org": 0.95,
-  "tc39.es":              0.90,
+| Domain | Score |
+|--------|-------|
+| `github.com` | 0.95 |
+| `developer.mozilla.org` | 0.95 |
+| `docs.*` | 0.85 |
+| `stackoverflow.com` | 0.80 |
+| `medium.com` | 0.55 |
 
-  // Tier A — documentation
-  "readthedocs.io":       0.90,
-  "docs.python.org":      0.90,
-  "docs.rs":              0.90,
-  "pkg.go.dev":           0.90,
-  "nodejs.org":           0.85,
-  "react.dev":            0.85,
-  "nextjs.org":           0.85,
-  "vuejs.org":            0.85,
-  "angular.dev":          0.85,
-  "svelte.dev":           0.85,
+Unknown domains default to 0.50.
 
-  // Tier B — package managers
-  "npmjs.com":            0.85,
-  "pypi.org":             0.85,
-  "crates.io":            0.85,
-  "rubygems.org":         0.80,
-  "packagist.org":        0.80,
+### 3. Implicit Freshness (weight 0.03)
 
-  // Tier C — Q&A and tutorials
-  "stackoverflow.com":    0.80,
-  "dev.to":               0.70,
-  "medium.com":           0.55,
-  "hashnode.dev":         0.65,
-  "freecodecamp.org":     0.70,
+Not a separate classification per result. Instead, the query itself is analyzed
+once via NLI to determine if the user needs recent information.
 
-  // Tier D — general
-  "wikipedia.org":        0.60,
-  "w3schools.com":        0.50,
-};
+#### Freshness Detection
 
-// Unknown domains: 0.50
-// Subdomains: look up parent domain
-```
+A single NLI zero-shot inference on the query with the hypothesis:
 
-**Domain patterns (regex):**
-```typescript
-const DOMAIN_PATTERNS: Array<[RegExp, number]> = [
-  [/^docs\./, 0.85],              // docs.* — documentation sites
-  [/^developer\./, 0.85],         // developer.* — dev portals
-  [/^api\./, 0.80],               // api.* — API docs
-  [/\.readthedocs\.io$/, 0.90],   // *.readthedocs.io
-  [/\.github\.io$/, 0.75],        // *.github.io — project pages
-];
-```
+> *"The user request implies a need for recent information, updates, latest versions, or news."*
 
-### 3. Freshness Score (0.0 – 1.0)
+If the entailment score exceeds 0.45, `requiresFreshness` is set to `true`.
 
-Based on the result's `published_date`. If unknown — neutral score.
+#### Freshness Score per Result
 
-```typescript
-function freshnessScore(publishedDate: string | null): number {
-  if (!publishedDate) return 0.5;  // Neutral
+The score is computed from `published_date` (if available in provider metadata)
+and the `requiresFreshness` flag:
 
-  const ageHours = (Date.now() - new Date(publishedDate).getTime()) / 3600000;
+| Condition | `requiresFreshness=true` | `requiresFreshness=false` |
+|---|---|---|
+| No `published_date` | **1.0** | **1.0** |
+| ≤ 1 month old | 1.0 | 1.0 |
+| ≤ 1 year old | 0.4 | 1.0 |
+| ≤ 3 years old | 0.0 | 1.0 |
+| ≤ 5 years old | 0.0 | 0.6 |
+| older | 0.0 | 0.1 |
 
-  if (ageHours < 24)    return 1.0;   // Last day
-  if (ageHours < 168)   return 0.9;   // Last week
-  if (ageHours < 720)   return 0.8;   // Last month
-  if (ageHours < 2160)  return 0.7;   // Last 3 months
-  if (ageHours < 8760)  return 0.5;   // Last year
-  return 0.3;                          // Older than a year
-}
-```
+When `requiresFreshness=false` (muted mode), recent content up to 3 years
+receives no penalty — protecting fundamental knowledge (algorithms, API refs,
+SQL). Only content older than 5 years is penalized.
 
-### 4. Position Score (0.0 – 1.0)
+When `requiresFreshness=true`, content older than ~1 month is aggressively
+down-weighted — suitable for news, release announcements, and migration guides.
 
-Normalized position in the original provider results.
+Missing `published_date` is treated as neutral (1.0) to avoid penalizing
+results whose metadata simply lacks a timestamp.
 
-```typescript
-function positionScore(position: number, totalResults: number): number {
-  // Linear normalization: first position = 1.0, last = ~0.1
-  return Math.max(0.1, 1.0 - (position / totalResults) * 0.9);
-}
-```
+### 4. Position (weight 0.03)
 
----
+Linear: position 1 → ~0.91, last position → ~0.1.
 
 ## Deduplication
 
-Before reranking, results are deduplicated by URL:
+Before scoring, results are deduplicated by normalized URL (remove `www.`,
+trailing slash, `utm_*` params, hash). The best (lowest) position is kept.
 
-```typescript
-function deduplicateResults(results: ProviderResult[]): ProviderResult[] {
-  const seen = new Map<string, ProviderResult>();
+## Intent Classification
 
-  for (const result of results) {
-    const normalizedUrl = normalizeUrl(result.url);
+Query intent (`github` / `docs` / `news` / `web`) is classified separately
+by the same NLI model, using 4 candidate labels with softmax and a 0.45
+confidence threshold. Intent determines:
+- Which search providers to use
+- Cache TTL (news: 30min, docs: 3h, web: 6h, github: 4h)
+- Language metadata for github intent (e.g., `rust` from query)
 
-    if (!seen.has(normalizedUrl)) {
-      seen.set(normalizedUrl, result);
-    } else {
-      // Keep result with better (lower) position
-      const existing = seen.get(normalizedUrl)!;
-      if (result.raw_position < existing.raw_position) {
-        seen.set(normalizedUrl, result);
-      }
-    }
-  }
+The intent classifier runs once per query; the reranker runs one NLI inference
+per unique result.
 
-  return Array.from(seen.values());
-}
-
-function normalizeUrl(url: string): string {
-  const parsed = new URL(url);
-  // Remove trailing slash, utm_ params, www.
-  parsed.hash = "";
-  parsed.hostname = parsed.hostname.replace(/^www\./, "");
-  for (const key of [...parsed.searchParams.keys()]) {
-    if (key.startsWith("utm_") || key === "ref") {
-      parsed.searchParams.delete(key);
-    }
-  }
-  return parsed.toString().replace(/\/$/, "");
-}
-```
-
-## Example
+## Pipeline Summary
 
 ```
-Query: "react server components docs"
-Intent: docs
+query ──→ NLI(4 intent labels) ──→ intent (provider routing)
+       │
+       └──→ NLI(1 freshness hypothesis) ──→ requiresFreshness (boolean)
 
-Results before reranking:
-1. medium.com/...        (position: 1, snippet sim: 0.72)
-2. react.dev/...         (position: 2, snippet sim: 0.91)
-3. github.com/react/...  (position: 3, snippet sim: 0.88)
-4. stackoverflow.com/... (position: 4, snippet sim: 0.65)
-5. dev.to/...            (position: 5, snippet sim: 0.70)
-
-Scoring (docs intent: semantic=0.30, domain=0.40, freshness=0.10, position=0.20):
-
-1. react.dev:        0.30*0.91 + 0.40*0.85 + 0.10*0.8 + 0.20*0.82 = 0.857
-2. github.com:       0.30*0.88 + 0.40*0.95 + 0.10*0.7 + 0.20*0.74 = 0.862
-3. stackoverflow:    0.30*0.65 + 0.40*0.80 + 0.10*0.5 + 0.20*0.56 = 0.677
-4. medium.com:       0.30*0.72 + 0.40*0.55 + 0.10*0.9 + 0.20*1.00 = 0.626  (was #1!)
-5. dev.to:           0.30*0.70 + 0.40*0.70 + 0.10*0.6 + 0.20*0.38 = 0.626
-
-After reranking: github.com → react.dev → stackoverflow → medium → dev.to
+results ──→ dedup ──→ NLI(query, snippet*) ──→ rerank(requiresFreshness)
+                                                       │
+                                         0.9*nli + 0.04*domain
+                                       + 0.03*freshness + 0.03*position
 ```

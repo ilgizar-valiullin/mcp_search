@@ -1,102 +1,167 @@
-import { EmbeddingService } from '../embeddings/embedding-service.js';
 import { logger } from '../utils/logger.js';
 
 type Intent = 'web' | 'docs' | 'github' | 'news';
 
-const INTENT_ANCHORS: Record<Intent, string> = {
-  github:
-    'source code, git repository, github issue, pull request, scripts, code implementation, programming library, source files',
-  docs: 'official documentation, api reference, technical manual, user guide, configuration parameters, function signature, developer docs',
-  news: 'latest tech news, product announcement, recent release, updates, industry events, what is new today, tech blog posts',
-  web: 'general web search, internet articles, wikipedia, discussion forums, public knowledge, general information, overview',
+export interface ClassifierResult {
+  intent: Intent;
+  language?: string;
+}
+
+type Pipeline = (
+  text: string,
+  labels: string[],
+  options?: { hypothesis_template?: string; multi_label?: boolean },
+) => Promise<{ labels: string[]; scores: number[] }>;
+
+const NLI_LABELS = [
+  'code repositories',
+  'developer documentation',
+  'technology industry news',
+  'non-technical everyday topics',
+] as const;
+
+const LABEL_TO_INTENT: Record<string, Intent> = {
+  'code repositories': 'github',
+  'developer documentation': 'docs',
+  'technology industry news': 'news',
+  'non-technical everyday topics': 'web',
+};
+
+const LANG_MAP: Record<string, string> = {
+  'c++': 'cpp',
+  cpp: 'cpp',
+  python: 'python',
+  rust: 'rust',
+  javascript: 'javascript',
+  js: 'javascript',
+  typescript: 'typescript',
+  ts: 'typescript',
+  go: 'go',
+  golang: 'go',
+  java: 'java',
+  swift: 'swift',
+  kotlin: 'kotlin',
+  ruby: 'ruby',
+  php: 'php',
 };
 
 export class IntentClassifier {
-  private embeddingService?: EmbeddingService;
-  private anchorVectors: Map<string, number[]> | null = null;
+  private classifier: Pipeline | null = null;
   private initPromise: Promise<void> | null = null;
-  private readonly confidenceThreshold: number;
-  private readonly ambiguityThreshold: number;
+  private readonly modelName: string;
+  private readonly minScore: number;
 
-  constructor(
-    embeddingService?: EmbeddingService,
-    confidenceThreshold: number = 0.73,
-    ambiguityThreshold: number = 0.04,
-  ) {
-    this.embeddingService = embeddingService;
-    this.confidenceThreshold = confidenceThreshold;
-    this.ambiguityThreshold = ambiguityThreshold;
+  constructor(modelName: string = 'Xenova/nli-deberta-v3-xsmall', minScore: number = 0.45, pipeline?: Pipeline) {
+    this.modelName = modelName;
+    this.minScore = minScore;
+    if (pipeline) this.classifier = pipeline;
   }
 
-  async classify(query: string): Promise<Intent> {
-    return this.classifyByEmbedding(query);
-  }
-
-  private async classifyByEmbedding(query: string): Promise<Intent> {
-    if (!this.embeddingService?.isLoaded) return 'web';
-
-    await this.ensureAnchorsReady();
-    if (!this.anchorVectors || this.anchorVectors.size === 0) return 'web';
+  async classify(query: string): Promise<ClassifierResult> {
+    const classifier = await this.getPipeline();
+    if (!classifier) return { intent: 'web' };
 
     try {
-      const queryVec = await this.embeddingService.embed(query);
-      const scores: Array<[Intent, number]> = [];
+      const result = await classifier(query, [...NLI_LABELS], {
+        hypothesis_template: 'This text is about {}',
+        multi_label: false,
+      });
 
-      for (const [intent, anchorVec] of this.anchorVectors.entries()) {
-        const score = EmbeddingService.cosineSimilarity(queryVec, anchorVec);
-        scores.push([intent as Intent, score]);
-      }
-
-      scores.sort((a, b) => b[1] - a[1]);
-
-      const [bestIntent, bestScore] = scores[0];
-      const secondScore = scores[1][1];
+      const bestLabel = result.labels[0];
+      const bestScore = result.scores[0];
 
       logger.debug(
-        { query, scores: scores.map(([i, s]) => `${i}=${s.toFixed(3)}`), bestScore: bestScore.toFixed(3) },
-        'Intent scores',
+        {
+          query,
+          scores: result.labels.map((l, i) => `${l}=${result.scores[i].toFixed(3)}`).join(', '),
+          bestLabel,
+          bestScore: bestScore.toFixed(3),
+        },
+        'Intent NLI scores',
       );
 
-      if (bestScore < this.confidenceThreshold || bestScore - secondScore < this.ambiguityThreshold) {
-        return 'web';
+      if (bestScore < this.minScore) return { intent: 'web' };
+
+      const intent = LABEL_TO_INTENT[bestLabel] || 'web';
+      const metadata: ClassifierResult = { intent };
+
+      if (intent === 'github') {
+        metadata.language = this.extractLanguage(query);
       }
 
-      return bestIntent;
+      return metadata;
     } catch (err) {
-      logger.error({ err }, 'Embedding classification failed, falling back to web');
-      return 'web';
+      logger.error({ err, query }, 'NLI classification failed, falling back to web');
+      return { intent: 'web' };
     }
   }
 
-  private async ensureAnchorsReady(): Promise<void> {
-    if (this.anchorVectors) return;
-    if (this.initPromise) {
-      await this.initPromise;
-      return;
-    }
-
-    this.initPromise = this.initAnchors();
-    await this.initPromise;
-  }
-
-  private async initAnchors(): Promise<void> {
-    if (!this.embeddingService) return;
+  async classifyFreshness(query: string): Promise<boolean> {
+    const classifier = await this.getPipeline();
+    if (!classifier) return false;
 
     try {
-      const intents = Object.keys(INTENT_ANCHORS) as Intent[];
-      const passages = intents.map((i) => INTENT_ANCHORS[i]);
-      const embeddings = await this.embeddingService.embedBatch(passages, 'passage');
+      const result = await classifier(query, [
+        'The user request implies a need for recent information, updates, latest versions, or news.',
+      ]);
+      const freshnessScore = result.scores[0];
+      const requiresFreshness = freshnessScore > 0.45;
 
-      const map = new Map<string, number[]>();
-      for (let i = 0; i < intents.length; i++) {
-        map.set(intents[i], embeddings[i]);
-      }
+      logger.debug(
+        { query, freshnessScore: freshnessScore.toFixed(3), requiresFreshness },
+        'Freshness NLI check',
+      );
 
-      this.anchorVectors = map;
-      logger.info({ intents }, 'Intent anchor vectors computed');
+      return requiresFreshness;
     } catch (err) {
-      logger.error({ err }, 'Failed to compute intent anchor vectors');
-      this.anchorVectors = new Map();
+      logger.error({ err, query }, 'Freshness NLI classification failed, defaulting to false');
+      return false;
+    }
+  }
+
+  async scoreEntailment(query: string, text: string): Promise<number> {
+    const classifier = await this.getPipeline();
+    if (!classifier || !text) return 0.5;
+
+    try {
+      const result = await classifier(text.substring(0, 512), [query], {
+        hypothesis_template: 'This text is about {}',
+        multi_label: false,
+      });
+      return result.scores[0];
+    } catch {
+      return 0.5;
+    }
+  }
+
+  private extractLanguage(query: string): string | undefined {
+    const lower = query.toLowerCase();
+    for (const [key, val] of Object.entries(LANG_MAP)) {
+      if (lower.includes(key)) return val;
+    }
+    return undefined;
+  }
+
+  private async getPipeline(): Promise<Pipeline | null> {
+    if (this.classifier) return this.classifier;
+    if (this.initPromise) {
+      await this.initPromise;
+      return this.classifier;
+    }
+
+    this.initPromise = this.init();
+    await this.initPromise;
+    return this.classifier;
+  }
+
+  private async init(): Promise<void> {
+    try {
+      logger.info({ model: this.modelName }, 'Loading NLI model for intent classification');
+      const { pipeline } = await import('@xenova/transformers');
+      this.classifier = (await pipeline('zero-shot-classification', this.modelName)) as unknown as Pipeline;
+      logger.info({ model: this.modelName }, 'NLI model loaded');
+    } catch (err) {
+      logger.error({ err, model: this.modelName }, 'Failed to load NLI model, intent classification disabled');
     }
   }
 }

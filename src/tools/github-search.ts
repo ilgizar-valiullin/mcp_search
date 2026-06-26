@@ -3,13 +3,14 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { config } from '../utils/config.js';
 import { logger } from '../utils/logger.js';
 
-const GitHubSearchSchema = z.object({
-  query: z.string().min(1, 'Query cannot be empty'),
-  type: z.enum(['repositories', 'code', 'issues', 'users']).default('repositories'),
-  language: z.string().optional(),
-  stars: z.string().optional(),
-  page: z.number().int().min(1).default(1),
-});
+export function registerGitHubSearchTool(server: McpServer): void {
+  const schema = z.object({
+    query: z.string().min(1, 'Query cannot be empty'),
+    type: z.enum(['repositories', 'code', 'issues', 'users']).default('repositories'),
+    language: z.string().optional(),
+    stars: z.string().optional(),
+    page: z.number().int().min(1).default(1),
+  });
 
 interface GitHubRepo {
   full_name: string;
@@ -53,16 +54,15 @@ function buildQuery(query: string, language?: string, stars?: string): string {
   return parts.join('+');
 }
 
-export function registerGitHubSearchTool(server: McpServer): void {
   server.registerTool(
     'github_search',
     {
       description: 'Search GitHub repositories, code, issues, or users',
-      inputSchema: GitHubSearchSchema,
+      inputSchema: schema,
     },
     async (args) => {
       try {
-        const { query, type: searchType, language, stars, page } = GitHubSearchSchema.parse(args);
+        const { query, type: searchType, language, stars, page } = schema.parse(args);
         const q = buildQuery(query, language, stars);
 
         logger.info({ query: q, type: searchType }, 'GitHub search requested');

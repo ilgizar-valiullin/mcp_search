@@ -4,14 +4,19 @@
 
 ```mermaid
 flowchart TD
-    A["Agent: search(query, intent?, freshness?, include_content?)"] --> B[MCP Transport Layer]
+    A["Agent: search(query, include_content?)"] --> B[MCP Transport Layer]
     B --> C[Validate Input - zod]
     C --> D[Budget Manager: checkBudget]
     D -->|Exceeded| D_ERR["Return error: BUDGET_EXCEEDED"]
     D -->|OK| E[Query Normalizer]
     E --> F["Generate cache_key + normalized query"]
 
-    F --> G{Semantic Enabled?}
+    F --> FC["NLI Zero-Shot(query, 4 labels) → intent"]
+    FC --> INTENT_META["Extract language metadata for github intent"]
+    INTENT_META --> FR["NLI(query, 1 freshness hypothesis) → requiresFreshness"]
+    FR --> FF["intent ∈ {github, docs, news, web} | requiresFreshness ∈ {true, false}"]
+
+    FF --> G{Semantic Enabled?}
     G -->|Yes| H[Compute embedding]
     H --> I[Semantic Cache: findSimilar]
     I -->|"similarity >= 0.92"| J[Semantic HIT]
@@ -29,18 +34,12 @@ flowchart TD
     P --> Q3["Brave / Tavily (if keys)"]
     P --> Q4["Exa / Firecrawl (if keys)"]
 
-    Q1 -->|Success| R[Raw results]
-    Q2 -->|Success| R
-    Q3 -->|Success| R
-    Q4 -->|Success| R
-    Q1 -->|Fail| Q2
-    Q2 -->|Fail| Q3
-    Q3 -->|Fail| Q4
-    Q4 -->|Fail| ERR["Return error: ALL_PROVIDERS_FAILED"]
+    Q1 & Q2 & Q3 & Q4 --> R[Raw results]
 
     R --> S[Deduplicate by URL]
-    S --> T[Reranker]
-    T --> U["Score = w1*semantic + w2*domain + w3*freshness + w4*position"]
+    S --> S2["NLI(query, result.snippet) → entailment score (0-1)"]
+    S2 --> T["Reranker (with requiresFreshness)"]
+    T --> U["Score = 0.9*NLI + 0.04*domain + 0.03*freshness + 0.03*position"]
     U --> V[Sort by final_score DESC]
     V --> W[Truncate to MAX_RESULTS_AFTER_RERANK]
 

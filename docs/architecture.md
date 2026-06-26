@@ -96,17 +96,27 @@ Selects providers and manages fallback logic.
 
 Adapters for specific search engines. All implement the `SearchProvider` interface.
 
-### 8. Reranker (`src/search/reranker.ts`)
+### 8. Intent Classifier (`src/search/intent-classifier.ts`)
 
-Final ranking of aggregated results.
+Auto-detects query intent (github / docs / news / web) via NLI zero-shot
+(`Xenova/nli-deberta-v3-xsmall`). Also exposes `scoreEntailment()` for reranking.
 
 **Responsibilities:**
-- Semantic similarity scoring
+- Query intent classification (4 labels, softmax, threshold 0.45)
+- Language extraction for github intent
+- NLI entailment scoring for reranking
+
+### 9. Reranker (`src/search/reranker.ts`)
+
+Final ranking of aggregated results using NLI entailment scores and implicit freshness detection.
+
+**Responsibilities:**
+- NLI entailment scoring (via shared classifier)
 - Domain quality scoring
-- Freshness scoring
+- Implicit freshness scoring (NLI-based query analysis + published_date)
 - Position blending
 
-### 9. Content Fetcher (`src/fetch/`)
+### 10. Content Fetcher (`src/fetch/`)
 
 Optional layer for downloading and cleaning web pages.
 
@@ -126,6 +136,7 @@ sequenceDiagram
     participant MCP as MCP Server
     participant BM as Budget Manager
     participant QN as Query Normalizer
+    participant IC as Intent Classifier
     participant SC as Semantic Cache
     participant EC as Exact Cache
     participant PR as Provider Router
@@ -137,6 +148,10 @@ sequenceDiagram
     BM-->>MCP: OK (8/15 searches used)
     MCP->>QN: normalize("react hooks tutorial")
     QN-->>MCP: { normalized: "react hooks tutorial", key: "abc123" }
+    MCP->>IC: classify("react hooks tutorial")
+    IC-->>MCP: { intent: "docs" }
+    MCP->>IC: classifyFreshness("react hooks tutorial")
+    IC-->>MCP: requiresFreshness = false
     MCP->>SC: findSimilar(embedding)
     SC-->>MCP: null (no similar query)
     MCP->>EC: get("abc123")
@@ -145,7 +160,9 @@ sequenceDiagram
     PR->>SP: search(query)
     SP-->>PR: results[]
     PR-->>MCP: results[]
-    MCP->>RR: rerank(results, queryEmbedding)
+    MCP->>IC: scoreEntailment(query, snippet*) for each result
+    IC-->>MCP: nliScores[]
+    MCP->>RR: rerank(results, requiresFreshness, nliScores)
     RR-->>MCP: rankedResults[]
     MCP->>EC: set("abc123", rankedResults)
     MCP->>SC: index(embedding, "abc123")
@@ -170,7 +187,7 @@ sequenceDiagram
     MCP-->>Agent: { results: [...], meta: { cached: true } }
 ```
 
-## Data Model
+### 11. Data Model
 
 ### Core Types
 
@@ -178,7 +195,6 @@ sequenceDiagram
 interface SearchRequest {
   query: string;
   intent: "web" | "docs" | "github" | "news";
-  freshness: "any" | "day" | "week" | "month";
   include_content: boolean;
 }
 
@@ -248,4 +264,4 @@ interface ProviderStats {
 2. **Graceful Degradation** — if Tier 1 fails, fallback to Tier 2/3
 3. **Cache First** — semantic → exact → provider
 4. **Budget Safety** — hard limits on searches and fetches
-5. **Cache First** — semantic → exact → provider
+5. **Single NLI Model** — intent classification, freshness detection, and reranking share one DeBERTa-v3-xsmall instance

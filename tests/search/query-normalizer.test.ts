@@ -25,35 +25,29 @@ describe('normalizeQuery', () => {
 
 describe('generateCacheKey', () => {
   it('should generate consistent keys for same inputs', () => {
-    const a = generateCacheKey('react hooks', 'web', 'any');
-    const b = generateCacheKey('react hooks', 'web', 'any');
+    const a = generateCacheKey('react hooks', 'web');
+    const b = generateCacheKey('react hooks', 'web');
     expect(a).toBe(b);
   });
 
   it('should generate different keys for different intents', () => {
-    const a = generateCacheKey('react hooks', 'web', 'any');
-    const b = generateCacheKey('react hooks', 'docs', 'any');
-    expect(a).not.toBe(b);
-  });
-
-  it('should generate different keys for different freshness', () => {
-    const a = generateCacheKey('react hooks', 'web', 'day');
-    const b = generateCacheKey('react hooks', 'web', 'week');
+    const a = generateCacheKey('react hooks', 'web');
+    const b = generateCacheKey('react hooks', 'docs');
     expect(a).not.toBe(b);
   });
 });
 
 describe('processQuery', () => {
   it('should return normalized and cacheKey', () => {
-    const result = processQuery('  React Hooks Guide  ', 'web', 'any');
+    const result = processQuery('  React Hooks Guide  ', 'web');
     expect(result.normalized).toBe('react hooks guide');
     expect(result.cacheKey).toBeTruthy();
     expect(result.cacheKey.length).toBe(64);
   });
 
   it('should produce same cacheKey for similar queries', () => {
-    const a = processQuery('react hooks', 'web', 'any');
-    const b = processQuery('  React HOOKS  ', 'web', 'any');
+    const a = processQuery('react hooks', 'web');
+    const b = processQuery('  React HOOKS  ', 'web');
     expect(a.cacheKey).toBe(b.cacheKey);
   });
 });

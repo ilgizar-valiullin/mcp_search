@@ -9,7 +9,6 @@ import { z } from 'zod';
 export const SearchRequestSchema = z.object({
   query: z.string().min(1, "Query cannot be empty"),
   intent: z.enum(["web", "docs", "github", "news"]).default("web"),
-  freshness: z.enum(["any", "day", "week", "month"]).default("any"),
   include_content: z.boolean().default(false),
 });
 
@@ -198,7 +197,7 @@ export const ConfigSchema = z.object({
 
   // Intent classification — server-side auto-classifies query intent (github/docs/news/web)
   // when enabled. When disabled, the agent provides `intent` in the search request.
-  INTENT_CLASSIFICATION_ENABLED: z.boolean().or(z.string().transform(v => v === 'true')).default(true),
+  INTENT_CLASSIFIER_MODEL: z.string().default('Xenova/nli-deberta-v3-xsmall'),
 
   // Fetch
   FETCH_TIMEOUT_MS: z.number().or(z.string().transform(Number)).default(10000),
@@ -210,10 +209,6 @@ export const ConfigSchema = z.object({
 
   // Reranking
   RERANK_ENABLED: z.boolean().or(z.string().transform(v => v === 'true')).default(true),
-  RERANK_WEIGHT_SEMANTIC: z.number().or(z.string().transform(Number)).default(0.35),
-  RERANK_WEIGHT_DOMAIN: z.number().or(z.string().transform(Number)).default(0.30),
-  RERANK_WEIGHT_FRESHNESS: z.number().or(z.string().transform(Number)).default(0.15),
-  RERANK_WEIGHT_POSITION: z.number().or(z.string().transform(Number)).default(0.20),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;

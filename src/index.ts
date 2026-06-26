@@ -48,8 +48,8 @@ async function main(): Promise<void> {
     logger.info('Semantic layer initialized');
   }
 
-  const orchestrator = new Orchestrator(budgetManager, cache, router, fetcher, semanticCache, embeddingService);
-  const classifier = new IntentClassifier(embeddingService);
+  const classifier = new IntentClassifier(config.INTENT_CLASSIFIER_MODEL);
+  const orchestrator = new Orchestrator(budgetManager, cache, router, fetcher, semanticCache, embeddingService, classifier);
 
   registerSearchTool(server, orchestrator, classifier);
   registerStatusTool(server, cache, router, budgetManager);

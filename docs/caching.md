@@ -28,7 +28,6 @@ CREATE TABLE queries (
     query_raw     TEXT NOT NULL,
     query_norm    TEXT NOT NULL,
     intent        TEXT NOT NULL DEFAULT 'web',
-    freshness     TEXT NOT NULL DEFAULT 'any',
     created_at    INTEGER NOT NULL,
     expires_at    INTEGER NOT NULL,
     hit_count     INTEGER NOT NULL DEFAULT 0,
@@ -87,32 +86,24 @@ CREATE TABLE provider_stats (
 
 ### TTL Strategy
 
-| Data Type | TTL (min) | TTL (max) | Logic |
-|-----------|-----------|-----------|-------|
-| Web search | 6 hours | 24 hours | General search |
-| Docs search | 1 hour | 6 hours | Documentation |
-| News search | 15 minutes | 60 minutes | Fast-changing news |
-| GitHub search | 2 hours | 12 hours | Issues/PRs update often |
-| Fetched pages | 1 day | 7 days | Page content is stable |
+| Data Type | TTL | Logic |
+|-----------|-----|-------|
+| Web search | 6 hours | General search |
+| Docs search | 3 hours | Documentation |
+| News search | 30 minutes | Fast-changing news |
+| GitHub search | 4 hours | Issues/PRs update often |
+| Fetched pages | 1–7 days | Page content is stable |
 
 **TTL Formula:**
 ```typescript
-function calculateTTL(intent: string, freshness: string): number {
-  const baseTTL = {
+function calculateTTL(intent: string): number {
+  const baseTTL: Record<string, number> = {
     web:    6 * 3600,
     docs:   3 * 3600,
     news:   30 * 60,
     github: 4 * 3600,
   };
-
-  const freshnessMultiplier = {
-    any:   1.0,
-    month: 0.8,
-    week:  0.5,
-    day:   0.2,
-  };
-
-  return Math.floor(baseTTL[intent] * freshnessMultiplier[freshness]);
+  return baseTTL[intent] ?? baseTTL.web;
 }
 ```
 
@@ -133,7 +124,7 @@ function calculateTTL(intent: string, freshness: string): number {
 1. **Similar query matching** — "react hooks tutorial" ≈ "react hooks guide"
 2. **Deduplication** — avoid repeated provider calls
 3. **Reuse** — return results from similar queries
-4. **Reranking** — query-to-snippet similarity for scoring
+4. **Reranking** — NLI-based query-to-snippet entailment scoring (see [reranking.md](reranking.md))
 
 ### Embedding Models
 

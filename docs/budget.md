@@ -14,8 +14,8 @@ An AI agent can enter a search loop:
 
 | Resource | Limit | Description |
 |----------|-------|-------------|
-| Search queries | 10–15 | Unique search queries to providers |
-| Page fetches | 20–30 | Page content downloads |
+| Search queries | 15 | Unique search queries to providers |
+| Page fetches | 30 | Page content downloads |
 | Budget window | 30 minutes | Sliding time window |
 
 **Configuration:**

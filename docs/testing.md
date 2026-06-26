@@ -87,4 +87,4 @@ const isConfigured = !!config.BRAVE_API_KEY;
 
 ## CI
 
-The CI workflow (`.github/workflows/ci.yml`) runs unit tests on Node 20 and 22:
+The CI workflow (`.github/workflows/ci.yml`) runs unit tests on Node 20 and 22, lint, and build on every push and pull request.

@@ -7,6 +7,7 @@ interface ExaResult {
   title: string;
   url: string;
   text?: string;
+  publishedDate?: string;
   published_date?: string;
   score?: number;
 }
@@ -64,7 +65,7 @@ export class ExaProvider extends BaseProvider {
       title: r.title ?? '',
       url: r.url ?? '',
       snippet: r.text ?? '',
-      published_date: r.published_date,
+      published_date: r.publishedDate ?? r.published_date,
       raw_position: i + 1,
       provider: 'exa',
     }));

@@ -87,6 +87,13 @@ export class DuckDuckGoProvider extends BaseProvider {
       snippets.push(this.stripHtml(snippetMatch[1]));
     }
 
+    const dates: (string | undefined)[] = [];
+    const dateRegex = /<span>[\s&nbsp;]*(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})/gi;
+    let dateMatch: RegExpExecArray | null;
+    while ((dateMatch = dateRegex.exec(html)) !== null) {
+      dates.push(dateMatch[1]);
+    }
+
     let position = 0;
     let titleMatch: RegExpExecArray | null;
     while ((titleMatch = titleRegex.exec(html)) !== null) {
@@ -97,14 +104,31 @@ export class DuckDuckGoProvider extends BaseProvider {
 
       position++;
       const snippet = snippets[position - 1] ?? '';
+      const date = dates[position - 1];
+
+      const publishedDate: string | undefined = date
+        ? new Date(date).toISOString()
+        : undefined;
 
       results.push({
         title: this.decodeEntities(rawTitle),
         url: this.decodeEntities(rawUrl),
         snippet: this.decodeEntities(snippet),
+        published_date: publishedDate,
         raw_position: basePosition + position,
         provider: 'duckduckgo',
       });
+    }
+
+    if (results.length === 0) {
+      const hasCaptcha = /captcha|verify|blocked|challenge/i.test(html);
+      const hasResultsHeading = /class=["']?results["']?|id=["']?results["']?/i.test(html);
+      if (hasCaptcha) {
+        throw new Error('DuckDuckGo returned a captcha/blocking page — try reducing DDG_MAX_PER_MINUTE or increasing DDG_DELAY_MS');
+      }
+      if (!hasResultsHeading) {
+        throw new Error('DuckDuckGo HTML structure may have changed — no result blocks found in response');
+      }
     }
 
     return results;
@@ -120,6 +144,7 @@ export class DuckDuckGoProvider extends BaseProvider {
       .replace(/&lt;/g, '<')
       .replace(/&gt;/g, '>')
       .replace(/&quot;/g, '"')
+      .replace(/&nbsp;/g, ' ')
       .replace(/&#x27;/g, "'")
       .replace(/&#x2F;/g, '/')
       .replace(/&#(\d+);/g, (_m: string, n: string) => String.fromCharCode(parseInt(n, 10)));

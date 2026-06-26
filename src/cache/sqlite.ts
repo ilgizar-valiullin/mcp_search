@@ -11,7 +11,6 @@ interface QueryRow {
   query_raw: string;
   query_norm: string;
   intent: string;
-  freshness: string;
   created_at: number;
   expires_at: number;
   hit_count: number;
@@ -160,16 +159,16 @@ export class SqliteCache {
     return { id: query.id, results, queryNorm: query.query_norm };
   }
 
-  setQuery(cacheKey: string, queryRaw: string, queryNorm: string, intent: string, freshness: string, results: SearchResult[], ttlSeconds: number): void {
+  setQuery(cacheKey: string, queryRaw: string, queryNorm: string, intent: string, results: SearchResult[], ttlSeconds: number): void {
     const now = Math.floor(Date.now() / 1000);
 
     this.db.prepare(`
-      INSERT INTO queries (cache_key, query_raw, query_norm, intent, freshness, created_at, expires_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO queries (cache_key, query_raw, query_norm, intent, created_at, expires_at)
+      VALUES (?, ?, ?, ?, ?, ?)
       ON CONFLICT(cache_key) DO UPDATE SET
         query_raw = excluded.query_raw,
         expires_at = excluded.expires_at
-    `).run(cacheKey, queryRaw, queryNorm, intent, freshness, now, now + ttlSeconds);
+    `).run(cacheKey, queryRaw, queryNorm, intent, now, now + ttlSeconds);
 
     const query = this.db.prepare('SELECT id FROM queries WHERE cache_key = ?').get(cacheKey) as { id: number } | undefined;
     if (!query) return;

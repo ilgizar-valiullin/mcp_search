@@ -14,15 +14,15 @@ export function normalizeQuery(raw: string): string {
     .trim();
 }
 
-export function generateCacheKey(normalized: string, intent: string, freshness: string): string {
+export function generateCacheKey(normalized: string, intent: string): string {
   const hash = createHash('sha256')
-    .update(`${normalized}|${intent}|${freshness}`)
+    .update(`${normalized}|${intent}`)
     .digest('hex');
   return hash;
 }
 
-export function processQuery(raw: string, intent: string, freshness: string): NormalizedQuery {
+export function processQuery(raw: string, intent: string): NormalizedQuery {
   const normalized = normalizeQuery(raw);
-  const cacheKey = generateCacheKey(normalized, intent, freshness);
+  const cacheKey = generateCacheKey(normalized, intent);
   return { normalized, cacheKey };
 }

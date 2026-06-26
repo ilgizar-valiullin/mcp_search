@@ -3,30 +3,28 @@ import { SqliteCache } from '../cache/sqlite.js';
 import { SemanticCache } from '../cache/semantic-cache.js';
 import { ProviderRouter } from './provider-router.js';
 import { processQuery } from './query-normalizer.js';
-import { rerankResults } from './reranker.js';
+import { rerankResults, deduplicateResults } from './reranker.js';
 import { Fetcher } from '../fetch/fetcher.js';
 import { extractContent, truncateContent } from '../fetch/readability.js';
 import { EmbeddingService } from '../embeddings/embedding-service.js';
+import { IntentClassifier } from './intent-classifier.js';
 import { config } from '../utils/config.js';
 import { logger } from '../utils/logger.js';
 import type { SearchRequest, SearchResponse, SearchResult } from '../utils/types.js';
 
 interface TTLConfig {
   base: number;
-  freshnessMultiplier: Record<string, number>;
 }
 
 const TTL_BY_INTENT: Record<string, TTLConfig> = {
-  web: { base: 6 * 3600, freshnessMultiplier: { any: 1.0, month: 0.8, week: 0.5, day: 0.2 } },
-  docs: { base: 3 * 3600, freshnessMultiplier: { any: 1.0, month: 0.8, week: 0.5, day: 0.2 } },
-  news: { base: 30 * 60, freshnessMultiplier: { any: 1.0, month: 0.8, week: 0.5, day: 0.2 } },
-  github: { base: 4 * 3600, freshnessMultiplier: { any: 1.0, month: 0.8, week: 0.5, day: 0.2 } },
+  web: { base: 6 * 3600 },
+  docs: { base: 3 * 3600 },
+  news: { base: 30 * 60 },
+  github: { base: 4 * 3600 },
 };
 
-function calculateTTL(intent: string, freshness: string): number {
-  const ttlConfig = TTL_BY_INTENT[intent] ?? TTL_BY_INTENT.web;
-  const multiplier = ttlConfig.freshnessMultiplier[freshness] ?? 1.0;
-  return Math.floor(ttlConfig.base * multiplier);
+function calculateTTL(intent: string): number {
+  return TTL_BY_INTENT[intent]?.base ?? TTL_BY_INTENT.web.base;
 }
 
 const PAGE_TTL: Record<string, number> = {
@@ -58,6 +56,7 @@ export class Orchestrator {
   private router: ProviderRouter;
   private fetcher: Fetcher;
   private embeddingService?: EmbeddingService;
+  private classifier?: IntentClassifier;
 
   constructor(
     budgetManager: BudgetManager,
@@ -66,6 +65,7 @@ export class Orchestrator {
     fetcher: Fetcher,
     semanticCache?: SemanticCache,
     embeddingService?: EmbeddingService,
+    classifier?: IntentClassifier,
   ) {
     this.budgetManager = budgetManager;
     this.cache = cache;
@@ -73,11 +73,16 @@ export class Orchestrator {
     this.fetcher = fetcher;
     this.semanticCache = semanticCache;
     this.embeddingService = embeddingService;
+    this.classifier = classifier;
   }
 
   async search(request: SearchRequest): Promise<SearchResponse> {
     const startTime = Date.now();
-    const { normalized, cacheKey } = processQuery(request.query, request.intent, request.freshness);
+    const { normalized, cacheKey } = processQuery(request.query, request.intent);
+
+    const requiresFreshness = this.classifier
+      ? await this.classifier.classifyFreshness(request.query)
+      : false;
 
     const budgetCheck = this.budgetManager.checkBudget('search');
     if (!budgetCheck.allowed) {
@@ -176,7 +181,7 @@ export class Orchestrator {
     const providerResults = await Promise.race([
       this.router.search(normalized, {
         intent: request.intent,
-        freshness: request.freshness,
+        freshness: requiresFreshness ? 'day' : 'any',
         max_results: 20,
       }),
       new Promise<never>((_, reject) => {
@@ -184,17 +189,24 @@ export class Orchestrator {
       }),
     ]);
 
-    let queryEmbedding: number[] | undefined;
+    const deduped = deduplicateResults(providerResults);
+    let nliScores: number[] | undefined;
 
-    if (this.embeddingService && config.SEMANTIC_ENABLED) {
-      try {
-        queryEmbedding = await this.embeddingService.embed(request.query);
-      } catch (err) {
-        logger.debug({ err }, 'Failed to compute query embedding for reranking');
-      }
+    if (this.classifier) {
+      nliScores = await Promise.all(
+        deduped.map(async (r) => {
+          const text = r.snippet || r.title;
+          if (!text) return 0.5;
+          try {
+            return await this.classifier!.scoreEntailment(request.query, text);
+          } catch {
+            return 0.5;
+          }
+        }),
+      );
     }
 
-    const scoredResults = rerankResults(providerResults, request.intent, queryEmbedding);
+    const scoredResults = rerankResults(deduped, requiresFreshness, nliScores, true);
     const topResults = scoredResults.slice(0, config.MAX_RESULTS_AFTER_RERANK);
 
     const searchResults: SearchResult[] = topResults.map((r) => ({
@@ -206,8 +218,8 @@ export class Orchestrator {
       relevance_score: r.relevance_score,
     }));
 
-    const ttl = calculateTTL(request.intent, request.freshness);
-    this.cache.setQuery(cacheKey, request.query, normalized, request.intent, request.freshness, searchResults, ttl);
+    const ttl = calculateTTL(request.intent);
+    this.cache.setQuery(cacheKey, request.query, normalized, request.intent, searchResults, ttl);
 
     const insertedQuery = this.cache.getQuery(cacheKey);
     if (insertedQuery && this.semanticCache && this.embeddingService && config.SEMANTIC_ENABLED) {

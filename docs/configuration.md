@@ -99,7 +99,14 @@ All settings via `.env` file or environment variables.
 | `EMBEDDING_MODEL` | `multilingual-e5-small` | Embedding model name |
 | `EMBEDDING_DIMENSION` | `384` | Vector dimension |
 | `SEMANTIC_THRESHOLD` | `0.92` | Similarity threshold for cache hit |
-| `INTENT_CLASSIFICATION_ENABLED` | `true` | Auto-classify query intent (github/docs/news/web) via embedding zero-shot with confidence + ambiguity gates. When disabled, agent controls `intent` |
+
+### Intent Classification & Reranking
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `INTENT_CLASSIFIER_MODEL` | `Xenova/nli-deberta-v3-xsmall` | NLI model for intent classification + reranking (177M params, ONNX) |
+
+The classifier runs automatically on every search query — no `intent` parameter needed. The same NLI model scores each result's relevance for reranking. See [reranking.md](reranking.md).
 
 ### Fetch Layer
 
@@ -117,10 +124,9 @@ All settings via `.env` file or environment variables.
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `RERANK_ENABLED` | `true` | Enable reranking |
-| `RERANK_WEIGHT_SEMANTIC` | `0.35` | Semantic similarity weight |
-| `RERANK_WEIGHT_DOMAIN` | `0.30` | Domain quality weight |
-| `RERANK_WEIGHT_FRESHNESS` | `0.15` | Freshness weight |
-| `RERANK_WEIGHT_POSITION` | `0.20` | Position weight |
+
+Results are scored as `0.9 * NLI(query, snippet) + 0.04 * domain + 0.03 * freshness + 0.03 * position`.  
+The NLI model is shared with intent classification — no separate config needed.
 
 ---
 

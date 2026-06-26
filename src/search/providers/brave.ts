@@ -8,6 +8,7 @@ interface BraveResult {
   url: string;
   description: string;
   age?: string;
+  page_age?: string;
 }
 
 interface BraveResponse {
@@ -17,6 +18,35 @@ interface BraveResponse {
   query: {
     original: string;
   };
+}
+
+const RELATIVE_AGE_RE = /^(\d+)\s*(hour|day|week|month|year)s?\s*ago$/i;
+
+function parseAge(age: string | undefined): string | undefined {
+  if (!age) return undefined;
+
+  // Absolute date: "March 27, 2026"
+  const abs = new Date(age);
+  if (!isNaN(abs.getTime()) && abs.getFullYear() > 2000) {
+    return abs.toISOString();
+  }
+
+  // Relative: "2 weeks ago", "3 days ago", "1 year ago"
+  const m = age.match(RELATIVE_AGE_RE);
+  if (m) {
+    const n = parseInt(m[1], 10);
+    const unit = m[2].toLowerCase();
+    const now = Date.now();
+    let ms = 0;
+    if (unit === 'hour') ms = n * 3600_000;
+    else if (unit === 'day') ms = n * 86_400_000;
+    else if (unit === 'week') ms = n * 604_800_000;
+    else if (unit === 'month') ms = n * 2_592_000_000;
+    else if (unit === 'year') ms = n * 31_536_000_000;
+    return new Date(now - ms).toISOString();
+  }
+
+  return undefined;
 }
 
 export class BraveProvider extends BaseProvider {
@@ -70,7 +100,7 @@ export class BraveProvider extends BaseProvider {
       title: r.title ?? '',
       url: r.url ?? '',
       snippet: r.description ?? '',
-      published_date: r.age,
+      published_date: parseAge(r.age ?? r.page_age),
       raw_position: i + 1,
       provider: 'brave',
     }));

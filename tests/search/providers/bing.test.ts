@@ -33,10 +33,6 @@ vi.mock('../../../src/utils/config.js', () => ({
     FETCH_USER_AGENT: 'SearchMCP/1.0',
     CONTENT_MAX_LENGTH: 8000,
     RERANK_ENABLED: true,
-    RERANK_WEIGHT_SEMANTIC: 0.35,
-    RERANK_WEIGHT_DOMAIN: 0.30,
-    RERANK_WEIGHT_FRESHNESS: 0.15,
-    RERANK_WEIGHT_POSITION: 0.20,
   },
 }));
 
@@ -56,5 +52,37 @@ describe('BingProvider', () => {
     const stats = provider.getStats();
     expect(stats.healthy).toBe(true);
     expect(stats.requests_today).toBe(0);
+  });
+
+  describe('parseResults (private, tested via HTML fixture)', () => {
+    const sampleHtml = `<ol id="b_results">
+      <li class="b_algo"><h2><a href="https://bing.com/redir">React Hooks</a></h2><cite>https://react.dev</cite><div class="b_caption"><p>Hooks let you use React features</p></div></li>
+      <li class="b_algo"><h2><a href="https://bing.com/redir">GeeksforGeeks</a></h2><cite>https://geeksforgeeks.org</cite><div class="b_caption"><p><span>May 2, 2026</span>&nbsp;&#0183;&#32;Performance Hooks in React</p></div></li>
+      <li class="b_algo"><h2><a href="https://bing.com/redir">Old Article</a></h2><cite>https://example.com</cite><div class="b_caption"><p><span>Jan 15, 2024</span>&nbsp;&#0183;&#32;Legacy React patterns</p></div></li>
+    </ol>`;
+
+    it('should extract published_date from date spans', () => {
+      const results = (provider as any).parseResults(sampleHtml, 10);
+      expect(results).toHaveLength(3);
+
+      // No date → undefined
+      expect(results[0].published_date).toBeUndefined();
+
+      // Has date → ISO string
+      expect(results[1].published_date).toBe('2026-05-01T18:00:00.000Z');
+      expect(results[2].published_date).toBe('2024-01-14T18:00:00.000Z');
+    });
+
+    it('should strip date prefix from snippet', () => {
+      const results = (provider as any).parseResults(sampleHtml, 10);
+      // Date should be removed from snippet
+      expect(results[1].snippet).not.toContain('May 2, 2026');
+      expect(results[1].snippet).toBe('Performance Hooks in React');
+    });
+
+    it('should keep snippet intact when no date present', () => {
+      const results = (provider as any).parseResults(sampleHtml, 10);
+      expect(results[0].snippet).toBe('Hooks let you use React features');
+    });
   });
 });

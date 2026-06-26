@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeUrl, deduplicateResults, domainScore, freshnessScore, positionScore, rerankResults, getWeights } from '../../src/search/reranker.js';
+import { normalizeUrl, deduplicateResults, domainScore, calculateImplicitFreshness, positionScore, rerankResults } from '../../src/search/reranker.js';
 import type { ProviderResult } from '../../src/utils/types.js';
 
 describe('normalizeUrl', () => {
@@ -60,20 +60,30 @@ describe('domainScore', () => {
   });
 });
 
-describe('freshnessScore', () => {
-  it('should return neutral for missing date', () => {
-    expect(freshnessScore(null)).toBe(0.5);
-    expect(freshnessScore(undefined)).toBe(0.5);
+describe('calculateImplicitFreshness', () => {
+  it('should return 1.0 for missing date', () => {
+    expect(calculateImplicitFreshness(null, false)).toBe(1.0);
+    expect(calculateImplicitFreshness(undefined, true)).toBe(1.0);
   });
 
-  it('should return 1.0 for recent content', () => {
+  it('should return 1.0 for recent content (requiresFreshness=false)', () => {
     const recent = new Date(Date.now() - 1000 * 3600).toISOString();
-    expect(freshnessScore(recent)).toBe(1.0);
+    expect(calculateImplicitFreshness(recent, false)).toBe(1.0);
   });
 
-  it('should return low score for old content', () => {
+  it('should return 1.0 for recent content (requiresFreshness=true)', () => {
+    const recent = new Date(Date.now() - 1000 * 3600).toISOString();
+    expect(calculateImplicitFreshness(recent, true)).toBe(1.0);
+  });
+
+  it('should decay old content when requiresFreshness=true', () => {
     const old = new Date('2020-01-01').toISOString();
-    expect(freshnessScore(old)).toBe(0.3);
+    expect(calculateImplicitFreshness(old, true)).toBe(0.0);
+  });
+
+  it('should plateau for recent years when requiresFreshness=false', () => {
+    const twoYearsAgo = new Date('2024-06-01').toISOString();
+    expect(calculateImplicitFreshness(twoYearsAgo, false)).toBe(1.0);
   });
 });
 
@@ -89,23 +99,6 @@ describe('positionScore', () => {
   });
 });
 
-describe('getWeights', () => {
-  it('should return web weights by default', () => {
-    const w = getWeights('unknown');
-    expect(w.semantic).toBe(0.35);
-  });
-
-  it('should return news weights with high freshness', () => {
-    const w = getWeights('news');
-    expect(w.freshness).toBe(0.45);
-  });
-
-  it('should return docs weights with high domain', () => {
-    const w = getWeights('docs');
-    expect(w.domain).toBe(0.40);
-  });
-});
-
 describe('rerankResults', () => {
   it('should sort by relevance_score descending', () => {
     const results: ProviderResult[] = [
@@ -114,7 +107,7 @@ describe('rerankResults', () => {
       { title: 'C', url: 'https://stackoverflow.com/c', snippet: 'c', raw_position: 3, provider: 'p3' },
     ];
 
-    const reranked = rerankResults(results, 'web');
+    const reranked = rerankResults(results);
     expect(reranked).toHaveLength(3);
     expect(reranked[0].relevance_score).toBeGreaterThanOrEqual(reranked[1].relevance_score);
   });

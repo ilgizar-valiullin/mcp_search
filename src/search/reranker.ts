@@ -35,19 +35,10 @@ const DOMAIN_PATTERNS: Array<[RegExp, number]> = [
   [/^stackoverflow\.com$/, 0.80],
 ];
 
-interface Weights {
-  semantic: number;
-  domain: number;
-  freshness: number;
-  position: number;
-}
-
-const INTENT_WEIGHTS: Record<string, Weights> = {
-  web: { semantic: 0.35, domain: 0.25, freshness: 0.15, position: 0.25 },
-  docs: { semantic: 0.30, domain: 0.40, freshness: 0.10, position: 0.20 },
-  github: { semantic: 0.25, domain: 0.35, freshness: 0.20, position: 0.20 },
-  news: { semantic: 0.20, domain: 0.15, freshness: 0.45, position: 0.20 },
-};
+const NLI_WEIGHT = 0.9;
+const DOMAIN_WEIGHT = 0.04;
+const FRESHNESS_WEIGHT = 0.03;
+const POSITION_WEIGHT = 0.03;
 
 export interface ScoredResult extends ProviderResult {
   relevance_score: number;
@@ -114,38 +105,40 @@ export function domainScore(url: string): number {
   return 0.50;
 }
 
-export function freshnessScore(publishedDate: string | null | undefined): number {
-  if (!publishedDate) return 0.5;
-
-  try {
-    const ageHours = (Date.now() - new Date(publishedDate).getTime()) / 3_600_000;
-
-    if (ageHours < 0) return 0.5;
-    if (ageHours < 24) return 1.0;
-    if (ageHours < 168) return 0.9;
-    if (ageHours < 720) return 0.8;
-    if (ageHours < 2_160) return 0.7;
-    if (ageHours < 8_760) return 0.5;
-    return 0.3;
-  } catch {
-    return 0.5;
-  }
-}
-
 export function positionScore(position: number, totalResults: number): number {
   if (totalResults <= 0) return 0.5;
   return Math.max(0.1, 1.0 - (position / totalResults) * 0.9);
 }
 
-export function getWeights(intent: string): Weights {
-  return INTENT_WEIGHTS[intent] ?? INTENT_WEIGHTS.web;
+export function calculateImplicitFreshness(publishedDate: string | null | undefined, requiresFreshness: boolean): number {
+  if (!publishedDate) return 1.0;
+
+  try {
+    const pubDate = new Date(publishedDate);
+    const now = new Date();
+    const diffYears = (now.getTime() - pubDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+
+    if (diffYears < 0) return 1.0;
+
+    if (requiresFreshness) {
+      if (diffYears <= 0.08) return 1.0;
+      if (diffYears <= 1.0) return 0.4;
+      return 0.0;
+    }
+
+    if (diffYears <= 3.0) return 1.0;
+    if (diffYears <= 5.0) return 0.6;
+    return 0.1;
+  } catch {
+    return 1.0;
+  }
 }
 
 export function rerankResults(
   results: ProviderResult[],
-  intent: string,
-  queryEmbedding?: number[],
-  embedFn?: (text: string) => number[],
+  requiresFreshness?: boolean,
+  nliScores?: number[],
+  skipDedup?: boolean,
 ): ScoredResult[] {
   if (!config.RERANK_ENABLED) {
     return results.map((r, i) => ({
@@ -154,29 +147,19 @@ export function rerankResults(
     }));
   }
 
-  const deduplicated = deduplicateResults(results);
-  const weights = getWeights(intent);
-  const totalResults = deduplicated.length;
+  const working = skipDedup ? results : deduplicateResults(results);
+  const totalResults = working.length;
 
-  const scored = deduplicated.map((result) => {
+  const scored = working.map((result, i) => {
     const domain = domainScore(result.url);
-    const freshness = freshnessScore(result.published_date);
     const position = positionScore(result.raw_position, totalResults);
+    const nli = nliScores?.[i] ?? 0.5;
+    const freshness = calculateImplicitFreshness(result.published_date, requiresFreshness ?? false);
 
-    let semantic = 0.5;
-    if (queryEmbedding && embedFn) {
-      try {
-        const textEmbedding = embedFn(result.snippet || result.title);
-        semantic = cosineSimilarity(queryEmbedding, textEmbedding);
-      } catch {
-        semantic = 0.5;
-      }
-    }
-
-    const score = weights.semantic * semantic
-      + weights.domain * domain
-      + weights.freshness * freshness
-      + weights.position * position;
+    const score = NLI_WEIGHT * nli
+      + DOMAIN_WEIGHT * domain
+      + FRESHNESS_WEIGHT * freshness
+      + POSITION_WEIGHT * position;
 
     return {
       ...result,
@@ -187,23 +170,4 @@ export function rerankResults(
   scored.sort((a, b) => b.relevance_score - a.relevance_score);
 
   return scored;
-}
-
-function cosineSimilarity(a: number[], b: number[]): number {
-  if (a.length !== b.length) return 0;
-
-  let dotProduct = 0;
-  let normA = 0;
-  let normB = 0;
-
-  for (let i = 0; i < a.length; i++) {
-    dotProduct += a[i] * b[i];
-    normA += a[i] * a[i];
-    normB += b[i] * b[i];
-  }
-
-  const magnitude = Math.sqrt(normA) * Math.sqrt(normB);
-  if (magnitude === 0) return 0;
-
-  return Math.max(0, dotProduct / magnitude);
 }

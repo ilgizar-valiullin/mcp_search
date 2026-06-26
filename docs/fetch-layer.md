@@ -43,7 +43,7 @@ interface FetcherConfig {
   max_retries: number;       // Default: 2
   retry_delay_ms: number;    // Default: 1000
   max_body_size: number;     // Default: 5MB
-  user_agent: string;        // Default: "SearchMCP/1.0 (bot)"
+  user_agent: string;        // Default: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
   concurrent_limit: number;  // Default: 3 parallel fetches
   delay_between_ms: number;  // Default: 500 per domain
 }
@@ -53,9 +53,9 @@ interface FetcherConfig {
 
 ```typescript
 const DEFAULT_HEADERS = {
-  "User-Agent": "SearchMCP/1.0 (+https://github.com/search-mcp; bot)",
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
   "Accept": "text/html,application/xhtml+xml",
-  "Accept-Language": "en-US,en;q=0.9,ru;q=0.8",
+  "Accept-Language": "en-US,en;q=0.9",
   "Accept-Encoding": "gzip, deflate",
 };
 ```
@@ -179,4 +179,4 @@ const PAGE_TTL: Record<string, number> = {
 - No JavaScript execution (SPAs not supported)
 - Max 3 concurrent fetches
 - Respectful delay between requests to the same domain
-- No `robots.txt` checking yet (V2+)
+- No `robots.txt` checking — not needed: not a crawler, budget limits already protect sites
