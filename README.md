@@ -121,6 +121,8 @@ Full docs:
 - [Configuration](docs/configuration.md)
 - [Roadmap](docs/roadmap.md)
 
+If you want to learn more about the decisions made, check out the [Architecture Decisions](docs/architecture-decisions.md) document.
+
 ## Donations / Support the Project
 
 * **EVM Address** (USDT, USDC, ETH, BNB): `0x3acf78e721aa065bd1509735a3ace630fcd0f452`
