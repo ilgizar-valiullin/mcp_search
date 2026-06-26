@@ -1,6 +1,9 @@
+import dotenv from 'dotenv';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { ConfigSchema, type Config } from './types.js';
+
+dotenv.config();
 
 function loadConfig(): Config {
   const parsed = ConfigSchema.parse(process.env);
