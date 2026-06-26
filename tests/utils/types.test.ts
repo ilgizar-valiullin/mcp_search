@@ -8,14 +8,12 @@ describe('SearchRequestSchema', () => {
     
     expect(result.query).toBe('react tutorial');
     expect(result.intent).toBe('web'); // default
-    expect(result.include_content).toBe(false); // default
   });
 
   it('should validate a full request', () => {
     const data = {
       query: 'github api docs',
       intent: 'docs',
-      include_content: true,
     };
     const result = SearchRequestSchema.parse(data);
     

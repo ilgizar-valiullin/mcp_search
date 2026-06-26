@@ -1,5 +1,4 @@
 import Database from 'better-sqlite3';
-import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 import { config } from '../utils/config.js';
 import { logger } from '../utils/logger.js';
@@ -31,19 +30,6 @@ interface ResultRow {
   created_at: number;
 }
 
-interface PageRow {
-  id: number;
-  url: string;
-  url_hash: string;
-  title: string | null;
-  content_md: string;
-  content_length: number;
-  fetched_at: number;
-  expires_at: number;
-  fetch_time_ms: number;
-  status_code: number;
-}
-
 export class SqliteCache {
   private db: Database.Database;
 
@@ -65,7 +51,6 @@ export class SqliteCache {
         query_raw     TEXT NOT NULL,
         query_norm    TEXT NOT NULL,
         intent        TEXT NOT NULL DEFAULT 'web',
-        freshness     TEXT NOT NULL DEFAULT 'any',
         created_at    INTEGER NOT NULL,
         expires_at    INTEGER NOT NULL,
         hit_count     INTEGER NOT NULL DEFAULT 0,
@@ -91,22 +76,6 @@ export class SqliteCache {
 
       CREATE INDEX IF NOT EXISTS idx_results_query_id ON results(query_id);
       CREATE INDEX IF NOT EXISTS idx_results_url ON results(url);
-
-      CREATE TABLE IF NOT EXISTS pages (
-        id            INTEGER PRIMARY KEY AUTOINCREMENT,
-        url           TEXT NOT NULL UNIQUE,
-        url_hash      TEXT NOT NULL,
-        title         TEXT,
-        content_md    TEXT NOT NULL,
-        content_length INTEGER NOT NULL,
-        fetched_at    INTEGER NOT NULL,
-        expires_at    INTEGER NOT NULL,
-        fetch_time_ms INTEGER NOT NULL,
-        status_code   INTEGER NOT NULL
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_pages_url_hash ON pages(url_hash);
-      CREATE INDEX IF NOT EXISTS idx_pages_expires ON pages(expires_at);
 
       CREATE TABLE IF NOT EXISTS provider_stats (
         id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -189,55 +158,27 @@ export class SqliteCache {
     tx();
   }
 
-  getPage(url: string): { content: string; title: string | null } | null {
-    const page = this.db.prepare('SELECT * FROM pages WHERE url_hash = ? AND expires_at > ?').get(this.hashUrl(url), Math.floor(Date.now() / 1000)) as PageRow | undefined;
-
-    if (!page) return null;
-    return { content: page.content_md, title: page.title };
-  }
-
-  setPage(url: string, content: string, title: string | null, fetchTimeMs: number, statusCode: number, ttlSeconds: number): void {
-    const now = Math.floor(Date.now() / 1000);
-    const urlHash = this.hashUrl(url);
-
-    this.db.prepare(`
-      INSERT INTO pages (url, url_hash, title, content_md, content_length, fetched_at, expires_at, fetch_time_ms, status_code)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(url) DO UPDATE SET
-        title = excluded.title,
-        content_md = excluded.content_md,
-        content_length = excluded.content_length,
-        fetched_at = excluded.fetched_at,
-        expires_at = excluded.expires_at,
-        fetch_time_ms = excluded.fetch_time_ms,
-        status_code = excluded.status_code
-    `).run(url, urlHash, title, content, content.length, now, now + ttlSeconds, fetchTimeMs, statusCode);
-  }
-
-  evictExpired(): { queriesRemoved: number; pagesRemoved: number } {
+  evictExpired(): { queriesRemoved: number } {
     const now = Math.floor(Date.now() / 1000);
 
-    const pagesResult = this.db.prepare('DELETE FROM pages WHERE expires_at < ?').run(now);
     const queriesResult = this.db.prepare('DELETE FROM queries WHERE expires_at < ?').run(now);
 
     this.db.pragma('wal_checkpoint(TRUNCATE)');
 
     return {
       queriesRemoved: queriesResult.changes,
-      pagesRemoved: pagesResult.changes,
     };
   }
 
   getStats(): CacheStats {
     const queries = this.db.prepare('SELECT COUNT(*) as count FROM queries').get() as { count: number };
     const results = this.db.prepare('SELECT COUNT(*) as count FROM results').get() as { count: number };
-    const pages = this.db.prepare('SELECT COUNT(*) as count FROM pages').get() as { count: number };
     const dbSize = this.db.prepare('SELECT page_count * page_size as size FROM pragma_page_count, pragma_page_size').get() as { size: number } | undefined;
 
     return {
       total_queries: queries.count,
       total_results: results.count,
-      total_pages: pages.count,
+      total_pages: 0,
       db_size_mb: Math.round(((dbSize?.size ?? 0) / (1024 * 1024)) * 100) / 100,
     };
   }
@@ -261,9 +202,5 @@ export class SqliteCache {
 
   close(): void {
     this.db.close();
-  }
-
-  private hashUrl(url: string): string {
-    return createHash('sha256').update(url).digest('hex');
   }
 }

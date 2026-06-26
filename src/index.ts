@@ -8,7 +8,6 @@ import { BudgetManager } from './limits/budget-manager.js';
 import { ProviderRouter } from './search/provider-router.js';
 import { Orchestrator } from './search/orchestrator.js';
 import { EmbeddingService } from './embeddings/embedding-service.js';
-import { Fetcher } from './fetch/fetcher.js';
 import { registerSearchTool } from './tools/search.js';
 import { registerStatusTool } from './tools/status.js';
 import { registerGitHubSearchTool } from './tools/github-search.js';
@@ -35,7 +34,6 @@ async function main(): Promise<void> {
   const cache = new SqliteCache();
   const budgetManager = new BudgetManager();
   const router = new ProviderRouter();
-  const fetcher = new Fetcher();
 
   let semanticCache: SemanticCache | undefined;
   let embeddingService: EmbeddingService | undefined;
@@ -49,7 +47,7 @@ async function main(): Promise<void> {
   }
 
   const classifier = new IntentClassifier(config.INTENT_CLASSIFIER_MODEL);
-  const orchestrator = new Orchestrator(budgetManager, cache, router, fetcher, semanticCache, embeddingService, classifier);
+  const orchestrator = new Orchestrator(budgetManager, cache, router, semanticCache, embeddingService, classifier);
 
   registerSearchTool(server, orchestrator, classifier);
   registerStatusTool(server, cache, router, budgetManager);

@@ -108,17 +108,6 @@ All settings via `.env` file or environment variables.
 
 The classifier runs automatically on every search query — no `intent` parameter needed. The same NLI model scores each result's relevance for reranking. See [reranking.md](reranking.md).
 
-### Fetch Layer
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `FETCH_TIMEOUT_MS` | `10000` | Fetch timeout (ms) |
-| `FETCH_MAX_RETRIES` | `2` | Max retries per URL |
-| `FETCH_MAX_BODY_SIZE` | `5242880` | Max response size (bytes, 5MB) |
-| `FETCH_CONCURRENT_LIMIT` | `3` | Concurrent fetches |
-| `FETCH_USER_AGENT` | `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36` | User-Agent header |
-| `CONTENT_MAX_LENGTH` | `8000` | Max content length (chars) |
-
 ### Reranking
 
 | Variable | Default | Description |

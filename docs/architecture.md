@@ -24,10 +24,7 @@ flowchart TD
     H3 --> I
     H4 --> I
     I --> J[Reranker]
-    J --> K{include_content?}
-    K -->|Yes| L[Content Fetcher]
-    K -->|No| M[Cache Results]
-    L --> M
+    J --> M[Cache Results]
     M --> N[Return to Agent]
 ```
 
@@ -195,14 +192,12 @@ sequenceDiagram
 interface SearchRequest {
   query: string;
   intent: "web" | "docs" | "github" | "news";
-  include_content: boolean;
 }
 
 interface SearchResult {
   title: string;
   url: string;
   snippet: string;
-  content?: string;
   source: string;
   published_date?: string;
   relevance_score: number;

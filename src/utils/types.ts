@@ -9,7 +9,6 @@ import { z } from 'zod';
 export const SearchRequestSchema = z.object({
   query: z.string().min(1, "Query cannot be empty"),
   intent: z.enum(["web", "docs", "github", "news"]).default("web"),
-  include_content: z.boolean().default(false),
 });
 
 export type SearchRequest = z.infer<typeof SearchRequestSchema>;
@@ -20,7 +19,6 @@ export interface SearchResult {
   title: string;
   url: string;
   snippet: string;
-  content?: string;
   source: string;
   published_date?: string;
   relevance_score: number;
@@ -198,14 +196,6 @@ export const ConfigSchema = z.object({
   // Intent classification — server-side auto-classifies query intent (github/docs/news/web)
   // when enabled. When disabled, the agent provides `intent` in the search request.
   INTENT_CLASSIFIER_MODEL: z.string().default('Xenova/nli-deberta-v3-xsmall'),
-
-  // Fetch
-  FETCH_TIMEOUT_MS: z.number().or(z.string().transform(Number)).default(10000),
-  FETCH_MAX_RETRIES: z.number().or(z.string().transform(Number)).default(2),
-  FETCH_MAX_BODY_SIZE: z.number().or(z.string().transform(Number)).default(5242880),
-  FETCH_CONCURRENT_LIMIT: z.number().or(z.string().transform(Number)).default(3),
-  FETCH_USER_AGENT: z.string().default('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'),
-  CONTENT_MAX_LENGTH: z.number().or(z.string().transform(Number)).default(8000),
 
   // Reranking
   RERANK_ENABLED: z.boolean().or(z.string().transform(v => v === 'true')).default(true),

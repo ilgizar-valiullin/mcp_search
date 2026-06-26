@@ -6,7 +6,6 @@ import { logger } from '../utils/logger.js';
 
 const SearchRequestSchema = z.object({
   query: z.string().min(1, 'Query cannot be empty'),
-  include_content: z.boolean().default(false),
 });
 
 export function registerSearchTool(server: McpServer, orchestrator: Orchestrator, classifier: IntentClassifier): void {
@@ -27,7 +26,6 @@ export function registerSearchTool(server: McpServer, orchestrator: Orchestrator
         const response = await orchestrator.search({
           query: parsed.query,
           intent,
-          include_content: parsed.include_content,
         });
 
         return {

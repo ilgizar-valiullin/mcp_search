@@ -53,7 +53,6 @@ Copy `.env.example` to `.env` and set your API keys. No keys are required — Du
 ```typescript
 search({
   query: string,
-  include_content?: boolean   // fetch page content as markdown
 })
 ```
 
@@ -118,7 +117,6 @@ Full docs:
 - [Providers & Fallback](docs/providers.md)
 - [Caching](docs/caching.md)
 - [Reranking](docs/reranking.md)
-- [Fetch Layer](docs/fetch-layer.md)
 - [Budget System](docs/budget.md)
 - [Configuration](docs/configuration.md)
 - [Roadmap](docs/roadmap.md)

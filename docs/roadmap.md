@@ -25,7 +25,7 @@ Minimally working version with one provider and basic cache.
 
 ### V1 Result
 
-Agent calls `search()` → first healthy provider responds → results cached → when `include_content=true` pages are fetched and cleaned.
+Agent calls `search()` → first healthy provider responds → results cached.
 
 ---
 

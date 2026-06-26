@@ -4,7 +4,7 @@
 
 ```mermaid
 flowchart TD
-    A["Agent: search(query, include_content?)"] --> B[MCP Transport Layer]
+    A["Agent: search(query)"] --> B[MCP Transport Layer]
     B --> C[Validate Input - zod]
     C --> D[Budget Manager: checkBudget]
     D -->|Exceeded| D_ERR["Return error: BUDGET_EXCEEDED"]
@@ -43,18 +43,7 @@ flowchart TD
     U --> V[Sort by final_score DESC]
     V --> W[Truncate to MAX_RESULTS_AFTER_RERANK]
 
-    W --> X{include_content?}
-    X -->|No| Y[Save to caches]
-    X -->|Yes| Z[Content Fetcher]
-    Z --> Z1[For each URL: check page cache]
-    Z1 -->|Cached| Z2[Use cached markdown]
-    Z1 -->|Not cached| Z3[HTTP GET with retry]
-    Z3 --> Z4[Readability extract]
-    Z4 --> Z5[Turndown HTML to Markdown]
-    Z5 --> Z6[Truncate to max length]
-    Z6 --> Z7[Save to page cache]
-    Z7 --> Z2
-    Z2 --> Y
+    W --> Y[Save to caches]
 
     Y --> AA[Record budget usage]
     AA --> AB["Return SearchResponse to Agent"]

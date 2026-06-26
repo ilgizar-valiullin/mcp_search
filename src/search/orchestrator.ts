@@ -4,8 +4,6 @@ import { SemanticCache } from '../cache/semantic-cache.js';
 import { ProviderRouter } from './provider-router.js';
 import { processQuery } from './query-normalizer.js';
 import { rerankResults, deduplicateResults } from './reranker.js';
-import { Fetcher } from '../fetch/fetcher.js';
-import { extractContent, truncateContent } from '../fetch/readability.js';
 import { EmbeddingService } from '../embeddings/embedding-service.js';
 import { IntentClassifier } from './intent-classifier.js';
 import { config } from '../utils/config.js';
@@ -27,34 +25,11 @@ function calculateTTL(intent: string): number {
   return TTL_BY_INTENT[intent]?.base ?? TTL_BY_INTENT.web.base;
 }
 
-const PAGE_TTL: Record<string, number> = {
-  docs: 7 * 24 * 3600,
-  readthedocs: 7 * 24 * 3600,
-  developer: 5 * 24 * 3600,
-  'github.com': 2 * 24 * 3600,
-  stackoverflow: 3 * 24 * 3600,
-  'medium.com': 1 * 24 * 3600,
-  'dev.to': 1 * 24 * 3600,
-};
-
-function getPageTTL(url: string): number {
-  try {
-    const hostname = new URL(url).hostname;
-    for (const [key, ttl] of Object.entries(PAGE_TTL)) {
-      if (hostname.includes(key)) return ttl;
-    }
-  } catch {
-    // fall through to default
-  }
-  return 2 * 24 * 3600;
-}
-
 export class Orchestrator {
   private budgetManager: BudgetManager;
   private cache: SqliteCache;
   private semanticCache?: SemanticCache;
   private router: ProviderRouter;
-  private fetcher: Fetcher;
   private embeddingService?: EmbeddingService;
   private classifier?: IntentClassifier;
 
@@ -62,7 +37,6 @@ export class Orchestrator {
     budgetManager: BudgetManager,
     cache: SqliteCache,
     router: ProviderRouter,
-    fetcher: Fetcher,
     semanticCache?: SemanticCache,
     embeddingService?: EmbeddingService,
     classifier?: IntentClassifier,
@@ -70,7 +44,6 @@ export class Orchestrator {
     this.budgetManager = budgetManager;
     this.cache = cache;
     this.router = router;
-    this.fetcher = fetcher;
     this.semanticCache = semanticCache;
     this.embeddingService = embeddingService;
     this.classifier = classifier;
@@ -107,7 +80,7 @@ export class Orchestrator {
           if (cached) {
             logger.info({ query: request.query, similarTo: cached.queryNorm }, 'Semantic dedup hit');
             return {
-              results: this.enrichResults(cached.results, request.include_content),
+              results: cached.results,
               meta: {
                 total_results: cached.results.length,
                 cached: true,
@@ -124,7 +97,7 @@ export class Orchestrator {
           if (resolvedQuery) {
             logger.info({ query: request.query, similarity: (1 - semanticHit.distance).toFixed(3) }, 'Semantic cache hit');
             return {
-              results: this.enrichResults(resolvedQuery.results, request.include_content),
+              results: resolvedQuery.results,
               meta: {
                 total_results: resolvedQuery.results.length,
                 cached: true,
@@ -150,7 +123,7 @@ export class Orchestrator {
         queryId: cached.id,
       });
       return {
-        results: this.enrichResults(cached.results, request.include_content),
+        results: cached.results,
         meta: {
           total_results: cached.results.length,
           cached: true,
@@ -232,10 +205,6 @@ export class Orchestrator {
       }
     }
 
-    if (request.include_content) {
-      await this.fetchContentForResults(searchResults);
-    }
-
     return {
       results: searchResults,
       meta: {
@@ -245,57 +214,5 @@ export class Orchestrator {
         search_time_ms: Date.now() - startTime,
       },
     };
-  }
-
-  private async fetchContentForResults(results: SearchResult[]): Promise<void> {
-    const fetchPromises = results.map(async (result) => {
-      const cachedPage = this.cache.getPage(result.url);
-      if (cachedPage) {
-        result.content = cachedPage.content;
-        return;
-      }
-
-      const budgetCheck = this.budgetManager.checkBudget('fetch');
-      if (!budgetCheck.allowed) {
-        logger.warn({ url: result.url }, 'Fetch budget exceeded, skipping content fetch');
-        return;
-      }
-
-      try {
-        this.budgetManager.recordUsage('fetch');
-        const fetched = await this.fetcher.fetch(result.url);
-
-        if (fetched.statusCode === 200 && fetched.content) {
-          const extracted = extractContent(fetched.content, result.url);
-
-          if (extracted) {
-            const content = truncateContent(extracted.content);
-
-            const ttl = getPageTTL(result.url);
-            this.cache.setPage(result.url, content, extracted.title, fetched.fetchTimeMs, fetched.statusCode, ttl);
-
-            result.content = content;
-          }
-        }
-      } catch (err) {
-        logger.error({ err, url: result.url }, 'Failed to fetch content');
-      }
-    });
-
-    await Promise.allSettled(fetchPromises);
-  }
-
-  private enrichResults(results: SearchResult[], includeContent: boolean): SearchResult[] {
-    if (!includeContent) return results;
-
-    return results.map((r) => {
-      if (!r.content) {
-        const cachedPage = this.cache.getPage(r.url);
-        if (cachedPage) {
-          return { ...r, content: cachedPage.content };
-        }
-      }
-      return r;
-    });
   }
 }
