@@ -17,11 +17,6 @@ class MockProvider extends BaseProvider {
   async doSearch(query: string, options: ProviderOptions): Promise<ProviderResult[]> {
     return this.doSearchFn(query, options);
   }
-
-  forceUnhealthy(): void {
-    this.health.consecutive_errors = 3;
-    this.health.is_healthy = false;
-  }
 }
 
 describe('ProviderRouter', () => {
@@ -109,26 +104,6 @@ describe('ProviderRouter', () => {
     await expect(router.search('test', dummyOptions)).rejects.toThrow('All providers failed');
   });
 
-  it('should skip unhealthy providers', async () => {
-    const p1 = new MockProvider('Provider1', 1);
-    const p2 = new MockProvider('Provider2', 1);
-
-    p1.forceUnhealthy();
-    p2.doSearchFn.mockResolvedValueOnce(dummyResults);
-
-    const router = new (class extends ProviderRouter {
-      constructor() {
-        super();
-        (this as any).providers = [p1, p2];
-      }
-    })();
-
-    const results = await router.search('test', dummyOptions);
-    expect(results).toEqual(dummyResults);
-    expect(p1.doSearchFn).not.toHaveBeenCalled();
-    expect(p2.doSearchFn).toHaveBeenCalledOnce();
-  });
-
   it('should return first provider result in sequential mode', async () => {
     const p1 = new MockProvider('Provider1', 1);
     p1.doSearchFn.mockResolvedValueOnce(dummyResults);
@@ -184,23 +159,20 @@ describe('ProviderRouter', () => {
     );
   });
 
-  it('should skip unhealthy provider in sequential mode', async () => {
+  it('should throw when all sequential providers fail', async () => {
     const p1 = new MockProvider('Provider1', 1);
-    const p2 = new MockProvider('Provider2', 1);
 
-    p1.forceUnhealthy();
-    p2.doSearchFn.mockResolvedValueOnce(dummyResults);
+    p1.doSearchFn.mockRejectedValueOnce(new Error('API down'));
 
     const router = new (class extends ProviderRouter {
       constructor() {
         super();
-        (this as any).providers = [p1, p2];
+        (this as any).providers = [p1];
       }
     })() as any;
 
-    const result = await router.searchSequential('test', dummyOptions);
-    expect(p1.doSearchFn).not.toHaveBeenCalled();
-    expect(p2.doSearchFn).toHaveBeenCalledOnce();
-    expect(result).toEqual(dummyResults);
+    await expect(router.searchSequential('test', dummyOptions)).rejects.toThrow(
+      'All sequential providers failed',
+    );
   });
 });

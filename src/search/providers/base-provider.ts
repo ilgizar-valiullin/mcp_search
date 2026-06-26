@@ -82,10 +82,6 @@ export abstract class BaseProvider implements SearchProvider {
     await prev;
 
     try {
-      if (!this.health.is_healthy) {
-        throw new Error(`Provider ${this.name} is currently unhealthy`);
-      }
-
       const start = Date.now();
       const results = await this.doSearch(query, options);
       this.recordSuccess(Date.now() - start);
@@ -99,11 +95,12 @@ export abstract class BaseProvider implements SearchProvider {
   }
 
   /**
-   * Default health check: tests if the provider is marked healthy.
-   * Providers can override this to perform an actual API ping.
+   * Default health check. Always returns true — providers are always eligible
+   * to be called. Errors are tracked in stats but never gate the provider.
+   * Individual providers can override this with an actual API ping.
    */
   async healthCheck(): Promise<boolean> {
-    return this.health.is_healthy;
+    return true;
   }
 
   getStats(): ProviderStats {
@@ -120,34 +117,24 @@ export abstract class BaseProvider implements SearchProvider {
     this.health.consecutive_errors = 0;
     this.health.last_success = new Date();
     this.health.requests_today++;
-    
+
     // Moving average for latency
     if (this.health.avg_latency_ms === 0) {
       this.health.avg_latency_ms = latency;
     } else {
       this.health.avg_latency_ms = (this.health.avg_latency_ms * 0.9) + (latency * 0.1);
     }
-
-    if (!this.health.is_healthy) {
-      this.health.is_healthy = true; // Recovered
-    }
   }
 
   protected recordError(_message: string): void {
     this.health.consecutive_errors++;
     this.health.last_error = new Date();
-    
-    // Mark unhealthy if > 3 consecutive errors
-    if (this.health.consecutive_errors >= 3) {
-      this.health.is_healthy = false;
-    }
   }
 
   /**
-   * Reset the health state. Can be used for recovery probes.
+   * Reset usage stats. Currently a no-op — health state is never persisted.
    */
   resetHealth(): void {
-    this.health.consecutive_errors = 0;
-    this.health.is_healthy = true;
+    // no-op
   }
 }
