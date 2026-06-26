@@ -105,6 +105,7 @@ export abstract class BaseProvider implements SearchProvider {
 
   getStats(): ProviderStats {
     return {
+      name: this.name,
       requests_today: this.health.requests_today,
       limit_today: this.limitToday,
       avg_latency_ms: Math.round(this.health.avg_latency_ms),

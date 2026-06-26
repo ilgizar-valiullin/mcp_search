@@ -54,6 +54,7 @@ export interface ProviderResult {
 }
 
 export interface ProviderStats {
+  name: string;
   requests_today: number;
   limit_today: number | null;
   avg_latency_ms: number;
