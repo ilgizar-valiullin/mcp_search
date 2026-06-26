@@ -11,7 +11,16 @@ interface RateLimitState {
   minuteStart: number;
 }
 
+interface VqdEntry {
+  vqd: string;
+  expires: number;
+}
+
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+
+const DEFAULT_ACCEPT_LANG = 'en-US,en;q=0.9';
+
+const VQD_TTL_MS = 3600_000;
 
 export class DuckDuckGoProvider extends BaseProvider {
   readonly name = 'DuckDuckGo';
@@ -28,6 +37,10 @@ export class DuckDuckGoProvider extends BaseProvider {
   private resultsPerPage: number;
   private maxPages: number;
 
+  private cookieJar = '';
+
+  private vqdCache = new Map<string, VqdEntry>();
+
   constructor() {
     super();
     this.delayMs = config.DDG_DELAY_MS;
@@ -41,32 +54,70 @@ export class DuckDuckGoProvider extends BaseProvider {
     const needPages = Math.min(Math.ceil(options.max_results / this.resultsPerPage), this.maxPages);
     const offsets = Array.from({ length: needPages }, (_, i) => i * this.resultsPerPage);
 
-    for (const offset of offsets) {
+    for (let pageIdx = 0; pageIdx < offsets.length; pageIdx++) {
+      const offset = offsets[pageIdx];
       await this.enforceRateLimit();
 
-      logger.debug({ query, offset }, 'DDG request');
+      logger.debug({ query, offset, pageIdx }, 'DDG request');
 
       const body: Record<string, string> = { q: query };
-      if (offset > 0) body.s = String(offset);
+
+      if (pageIdx === 0) {
+        body.b = '';
+      } else {
+        const vqd = this.getVqd(query);
+        if (!vqd) {
+          logger.warn({ query }, 'VQD missing for pagination, stopping DDG pagination');
+          break;
+        }
+        body.vqd = vqd;
+        body.nextParams = '';
+        body.api = 'd.js';
+        body.o = 'json';
+        body.v = 'l';
+        body.dc = String(offset + 1);
+        body.s = String(offset);
+      }
+
+      const headers: Record<string, string> = {
+        'User-Agent': UA,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Accept: 'text/html',
+        Referer: DDG_HTML_URL,
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'same-origin',
+        'Sec-Fetch-User': '?1',
+        'Accept-Language': DEFAULT_ACCEPT_LANG,
+      };
+
+      if (this.cookieJar) {
+        headers.Cookie = this.cookieJar;
+      }
 
       const response = await fetch(DDG_HTML_URL, {
         method: 'POST',
         signal: AbortSignal.timeout(10000),
-        headers: {
-          'User-Agent': UA,
-          'Content-Type': 'application/x-www-form-urlencoded',
-          Accept: 'text/html',
-        },
+        headers,
         body: new URLSearchParams(body),
+        redirect: 'manual',
       });
 
-      if (!response.ok) {
-        throw new Error(`DuckDuckGo returned ${response.status}: ${response.statusText}`);
-      }
+      this.updateCookieJar(response.headers);
 
       const html = await response.text();
-      const results = this.parseResults(html, allResults.length);
 
+      if (pageIdx === 0) {
+        this.extractAndStoreVqd(query, html);
+      }
+
+      if (this.isCaptchaPage(html)) {
+        throw new Error(
+          'DuckDuckGo returned a captcha/blocking page — try reducing DDG_MAX_PER_MINUTE or increasing DDG_DELAY_MS',
+        );
+      }
+
+      const results = this.parseResults(html, allResults.length);
       allResults.push(...results);
 
       if (results.length < 10) break;
@@ -74,6 +125,54 @@ export class DuckDuckGoProvider extends BaseProvider {
     }
 
     return allResults.slice(0, options.max_results);
+  }
+
+  private getVqd(query: string): string | undefined {
+    this.evictStaleVqd();
+    const entry = this.vqdCache.get(query);
+    return entry?.vqd;
+  }
+
+  private extractAndStoreVqd(query: string, html: string): void {
+    const match = html.match(/<input[^>]*name=["']vqd["'][^>]*value=["']([^"']+)["']/i);
+    if (match && match[1]) {
+      this.vqdCache.set(query, { vqd: match[1], expires: Date.now() + VQD_TTL_MS });
+      logger.debug({ query, vqd: match[1] }, 'DDG VQD extracted');
+    }
+  }
+
+  private evictStaleVqd(): void {
+    const now = Date.now();
+    for (const [key, entry] of this.vqdCache) {
+      if (entry.expires < now) {
+        this.vqdCache.delete(key);
+      }
+    }
+  }
+
+  private updateCookieJar(headers: Headers): void {
+    const setCookie = headers.getSetCookie?.() ?? [];
+    if (setCookie.length === 0) return;
+
+    for (const raw of setCookie) {
+      const eqIdx = raw.indexOf('=');
+      if (eqIdx === -1) continue;
+      const name = raw.slice(0, eqIdx).trim();
+      const semiIdx = raw.indexOf(';', eqIdx);
+      const value = semiIdx === -1 ? raw.slice(eqIdx + 1).trim() : raw.slice(eqIdx + 1, semiIdx).trim();
+
+      const oldPattern = new RegExp(`(^|;\\s*)${name}=[^;]*`);
+      if (oldPattern.test(this.cookieJar)) {
+        this.cookieJar = this.cookieJar.replace(oldPattern, `$1${name}=${value}`);
+      } else {
+        this.cookieJar += (this.cookieJar ? '; ' : '') + `${name}=${value}`;
+      }
+    }
+  }
+
+  private isCaptchaPage(html: string): boolean {
+    return /captcha|challenge|verify|blocked/i.test(html)
+      && /<form[^>]*id=["']challenge-form["']/i.test(html);
   }
 
   private parseResults(html: string, basePosition: number): ProviderResult[] {
@@ -106,26 +205,18 @@ export class DuckDuckGoProvider extends BaseProvider {
       const snippet = snippets[position - 1] ?? '';
       const date = dates[position - 1];
 
-      const publishedDate: string | undefined = date
-        ? new Date(date).toISOString()
-        : undefined;
-
       results.push({
         title: this.decodeEntities(rawTitle),
         url: this.decodeEntities(rawUrl),
         snippet: this.decodeEntities(snippet),
-        published_date: publishedDate,
+        published_date: date ? new Date(date).toISOString() : undefined,
         raw_position: basePosition + position,
         provider: 'duckduckgo',
       });
     }
 
-    if (results.length === 0) {
-      const hasCaptcha = /captcha|verify|blocked|challenge/i.test(html);
+    if (results.length === 0 && !this.isCaptchaPage(html)) {
       const hasResultsHeading = /class=["']?results["']?|id=["']?results["']?/i.test(html);
-      if (hasCaptcha) {
-        throw new Error('DuckDuckGo returned a captcha/blocking page — try reducing DDG_MAX_PER_MINUTE or increasing DDG_DELAY_MS');
-      }
       if (!hasResultsHeading) {
         throw new Error('DuckDuckGo HTML structure may have changed — no result blocks found in response');
       }
