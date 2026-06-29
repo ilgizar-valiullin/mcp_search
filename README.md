@@ -10,17 +10,8 @@
 # Run with npx (no install needed)
 npx mcp-web-hound --help
 
-# Or clone for local development
-git clone https://github.com/ilgizar-valiullin/mcp-web-hound.git
-cd mcp-web-hound
-npm install
-cp .env.example .env
-npm run build
-```
-
-Configure API keys via the interactive tool:
-
-```bash
+# Config is auto-created at ~/.config/mcp-web-hound/.env on first run.
+# Edit it via:
 npx mcp-web-hound-configure
 ```
 

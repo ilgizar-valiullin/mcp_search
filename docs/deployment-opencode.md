@@ -14,28 +14,27 @@ No install needed — npx fetches and runs the latest version automatically.
 npx mcp-web-hound --help
 ```
 
-## Configuration Model (2-tier)
+## Configuration
 
 Config lives in two places:
 
 | Tier | File | Purpose |
 |------|------|---------|
-| **Server** | `<server_root>/.env` | Main config — written by `configure` tool |
+| **Server** | `~/.config/mcp-web-hound/.env` | Main config — written by `configure` tool |
 | **Project** | `<project>/.env` | Optional per-folder overrides (individual keys only) |
 
-**AI agent rule:** Agents MUST write config ONLY to the server `.env` via
-`mcp-web-hound-configure --json set`. NEVER write to a project's `.env`.
+The server config is auto-created from defaults on first `npx mcp-web-hound` run.
 
 ### Set API keys
 
 ```bash
 # Interactive (TUI) — writes to server .env
-mcp-web-hound-configure
+npx mcp-web-hound-configure
 
 # Machine-readable (for agents) — writes to server .env
-mcp-web-hound-configure --json set BRAVE_API_KEY=your_key_here
-mcp-web-hound-configure --json set TAVILY_API_KEY=your_key_here
-mcp-web-hound-configure --json set GITHUB_TOKEN=ghp_xxx
+npx mcp-web-hound-configure --json set BRAVE_API_KEY=your_key_here
+npx mcp-web-hound-configure --json set TAVILY_API_KEY=your_key_here
+npx mcp-web-hound-configure --json set GITHUB_TOKEN=ghp_xxx
 ```
 
 To see all available settings:

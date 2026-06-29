@@ -1,16 +1,16 @@
 # Configuration
 
-## Two-tier config model
+## Config model
 
 Config is split across two `.env` files:
 
 | Tier | File | Purpose |
 |------|------|---------|
-| **Server** | `<package_root>/.env` | Main config — written by `mcp-web-hound-configure` |
+| **Server** | `~/.config/mcp-web-hound/.env` | Main config — written by `mcp-web-hound-configure` |
 | **Project** | `<cwd>/.env` | Optional per-folder overrides (individual keys only) |
 
 **AI agent rule:** Agents MUST write config ONLY to the server `.env` via
-`mcp-web-hound-configure --json set`. NEVER write to a project's `.env`.
+`npx mcp-web-hound-configure --json set`. NEVER write to a project's `.env`.
 
 ## Configure tool
 

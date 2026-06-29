@@ -2,7 +2,8 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { config, ENV_PATH, buildProviderLimits } from './utils/config.js';
+import { config, buildProviderLimits } from './utils/config.js';
+import { ENV_PATH } from './utils/env-path.js';
 import { logger } from './utils/logger.js';
 import { getStartupSummary } from './utils/config-help.js';
 import { SqliteCache } from './cache/sqlite.js';
@@ -38,12 +39,11 @@ Usage:
   npx mcp-web-hound                  Start MCP server (stdio)
   npx mcp-web-hound --help           Show this help
 
-Configuration model (2-tier):
-  ${ENV_PATH}         Server config (main — written by configure tool)
-  ${cwdEnv}            Per-project overrides (optional)
+Configuration:
+  ${ENV_PATH}          Main config (auto-created on first run, edit with configure tool)
+  ${cwdEnv}             Per-project overrides (optional)
 
-  AGENT RULE: AI agents MUST write config ONLY to the server .env via
-  configure --json set. NEVER write to a project's .env.
+  ALWAYS use "npx mcp-web-hound-configure --json set" to change settings.
 
 Commands:
   npx mcp-web-hound-configure                  Interactive settings editor

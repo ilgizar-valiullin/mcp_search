@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 
-import { existsSync, readFileSync, writeFileSync, renameSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import process, { stdin, stdout } from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline/promises';
 import { emitKeypressEvents } from 'node:readline';
 import { ConfigSchema } from '../utils/types.js';
+import { CONFIG_DIR, ENV_PATH } from '../utils/env-path.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const SERVER_ROOT = resolve(__dirname, '../..');
-const ENV_PATH = resolve(SERVER_ROOT, '.env');
 
 const C = {
   reset: '\x1b[0m',
@@ -237,8 +237,11 @@ function toEnv(v: unknown, ft: FieldType): string {
 }
 
 function prepareEnv(silent?: boolean): void {
-  // Only create .env from default.env if it doesn't exist at all
   if (existsSync(ENV_PATH)) return;
+
+  if (!existsSync(CONFIG_DIR)) {
+    mkdirSync(CONFIG_DIR, { recursive: true });
+  }
 
   const defaultPath = resolve(SERVER_ROOT, 'default.env');
   try {

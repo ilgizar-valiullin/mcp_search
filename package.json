@@ -1,6 +1,6 @@
 {
   "name": "mcp-web-hound",
-  "version": "1.9.5",
+  "version": "1.9.6",
   "description": "MCP Web Hound — unified web search, GitHub search, and GitLab search tools with caching, reranking, and rate limits",
   "type": "module",
   "main": "dist/index.js",
@@ -8,7 +8,6 @@
     "mcp-web-hound": "./dist/index.js",
     "mcp-web-hound-configure": "./dist/cli/configure.js"
   },
-  "preferGlobal": true,
   "files": [
     "dist/",
     "README.md",

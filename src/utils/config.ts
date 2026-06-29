@@ -3,18 +3,17 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ConfigSchema, type Config, type ProviderLimits } from './types.js';
+import { CONFIG_DIR, ENV_PATH } from './env-path.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Server root = ../../ from src/utils/ (next to package.json)
 const SERVER_ROOT = resolve(__dirname, '../..');
 
-// Config file lives next to package.json — written by mcp-web-hound-configure.
-// This is the main config for the server, shared across all projects.
-export const ENV_PATH = resolve(SERVER_ROOT, '.env');
-
-// Auto-create .env from default.env on first run
+// Auto-create config dir and .env from default.env on first run
+if (!existsSync(CONFIG_DIR)) {
+  mkdirSync(CONFIG_DIR, { recursive: true });
+}
 if (!existsSync(ENV_PATH)) {
   try {
     const defaultEnv = resolve(SERVER_ROOT, 'default.env');
