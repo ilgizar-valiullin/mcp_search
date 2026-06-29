@@ -2,7 +2,7 @@
 
 > Unified MCP search tools for AI agents — abstracts providers, caching, reranking, and rate limits behind a few simple tools.
 
-> ⚠️ **Experimental.** This project is actively developed. APIs and defaults may change.
+> ⚠️ **Work in progress.** Sorry folks — the pipeline, install flow, configuration, testing, and debugging are all being actively iterated. Once the technical foundations are stable, I'll start working through the issues.
 
 ## Quick Start
 
