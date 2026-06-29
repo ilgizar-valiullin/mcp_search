@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ConfigSchema, type Config, type ProviderLimits } from './types.js';
@@ -13,6 +13,19 @@ const SERVER_ROOT = resolve(__dirname, '../..');
 // Config file lives next to package.json — written by mcp-web-hound-configure.
 // This is the main config for the server, shared across all projects.
 export const ENV_PATH = resolve(SERVER_ROOT, '.env');
+
+// Auto-create .env from default.env on first run
+if (!existsSync(ENV_PATH)) {
+  try {
+    const defaultEnv = resolve(SERVER_ROOT, 'default.env');
+    if (existsSync(defaultEnv)) {
+      writeFileSync(ENV_PATH, readFileSync(defaultEnv, 'utf-8'), 'utf-8');
+    }
+  } catch {
+    // default.env missing or write failed — will fall back to configure tool
+  }
+}
+
 dotenv.config({ path: ENV_PATH, quiet: true });
 
 // Per-project override: CWD/.env can override individual keys from the main config.
