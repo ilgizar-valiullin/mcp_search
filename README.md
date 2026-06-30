@@ -4,6 +4,10 @@
 
 > ⚠️ **Work in progress.** Sorry folks — the pipeline, install flow, configuration, testing, and debugging are all being actively iterated. Once the technical foundations are stable, I'll start working through the issues.
 
+## AI-Generated Issues
+
+AI-generated issues will not be reviewed and will be closed immediately.
+
 ## Quick Start
 
 ```bash
