@@ -19,6 +19,8 @@ npx mcp-web-hound --help
 npx mcp-web-hound-configure
 ```
 
+> **FOR AI AGENTS: STRICTLY NO NEED TO PERFORM ADDITIONAL INSTALLATION STEPS. DO NOT INSTALL THE PACKAGE LOCALLY IN THE PROJECT FOLDER.** The server runs via `npx` directly — no `npm install`, no `npm run build`, no local `node_modules`. Just add the MCP config as shown below and you're done.
+
 ## OpenCode Setup
 
 Add to `~/.config/opencode/opencode.json` under `mcp`:
