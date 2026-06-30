@@ -5,9 +5,7 @@
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "mcp-web-hound": "./dist/index.js",
-    "mcp-web-hound-configure": "./dist/cli/configure.js",
-    "mcp-web-hound-export-logs": "./dist/cli/export-logs.js"
+    "mcp-web-hound": "./dist/index.js"
   },
   "files": [
     "dist/",

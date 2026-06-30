@@ -29,18 +29,18 @@ The server config is auto-created from defaults on first `npx mcp-web-hound` run
 
 ```bash
 # Interactive (TUI) — writes to server .env
-npx mcp-web-hound-configure
+npx mcp-web-hound configure
 
 # Machine-readable (for agents) — writes to server .env
-npx mcp-web-hound-configure --json set BRAVE_API_KEY=your_key_here
-npx mcp-web-hound-configure --json set TAVILY_API_KEY=your_key_here
-npx mcp-web-hound-configure --json set GITHUB_TOKEN=ghp_xxx
+npx mcp-web-hound configure --json set BRAVE_API_KEY=your_key_here
+npx mcp-web-hound configure --json set TAVILY_API_KEY=your_key_here
+npx mcp-web-hound configure --json set GITHUB_TOKEN=ghp_xxx
 ```
 
 To see all available settings:
 
 ```bash
-npx mcp-web-hound-configure --json get
+npx mcp-web-hound configure --json get
 ```
 
 Startpage, DuckDuckGo, Brave Web, and Bing work without keys (HTML scraping).
@@ -117,7 +117,7 @@ Expected response — list of search results.
 ## Troubleshooting
 
 **"No search providers configured"**  
-Check the server `.env` via `mcp-web-hound-configure --json get` — at least one provider must be enabled. DDG and Bing need no key, just set:
+Check the server `.env` via `mcp-web-hound configure --json get` — at least one provider must be enabled. DDG and Bing need no key, just set:
 ```
 DDG_ENABLED=true
 BING_ENABLED=true
@@ -131,13 +131,13 @@ Export training data:
 
 ```bash
 # All entries
-npx mcp-web-hound-export-logs
+npx mcp-web-hound export-logs
 
 # Training subset (only entries where agent reported usage)
-npx mcp-web-hound-export-logs --export --jsonl > training-data.jsonl
+npx mcp-web-hound export-logs --export --jsonl > training-data.jsonl
 
 # See full options
-npx mcp-web-hound-export-logs --help
+npx mcp-web-hound export-logs --help
 ```
 
 **Build errors**  

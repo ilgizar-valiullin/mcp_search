@@ -16,7 +16,7 @@ npx mcp-web-hound --help
 
 # Config is auto-created at ~/.config/mcp-web-hound/.env on first run.
 # Edit it via:
-npx mcp-web-hound-configure
+npx mcp-web-hound configure
 ```
 
 > **FOR AI AGENTS: STRICTLY NO NEED TO PERFORM ADDITIONAL INSTALLATION STEPS. DO NOT INSTALL THE PACKAGE LOCALLY IN THE PROJECT FOLDER.** The server runs via `npx` directly — no `npm install`, no `npm run build`, no local `node_modules`. Just add the MCP config as shown below and you're done.
@@ -45,7 +45,7 @@ For other clients and advanced setup → see [Deployment Guide](docs/deployment-
 
 ## Provider Setup
 
-Use `mcp-web-hound-configure` to set API keys. Startpage, DDG, Brave Web, and Bing work with zero config.
+Use `npx mcp-web-hound configure` to set API keys. Startpage, DDG, Brave Web, and Bing work with zero config.
 
 | Provider | Key Required | Tier | Rate Limit |
 |----------|-------------|------|------------|

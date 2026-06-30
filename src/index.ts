@@ -37,21 +37,18 @@ function printHelp(): void {
 mcp-web-hound v${SERVER_VERSION} — MCP search server for AI agents
 
 Usage:
-  npx mcp-web-hound                  Start MCP server (stdio)
-  npx mcp-web-hound --help           Show this help
+  npx mcp-web-hound                     Start MCP server (stdio, default)
+  npx mcp-web-hound configure           Interactive settings editor
+  npx mcp-web-hound configure --json get     List all settings (machine-readable)
+  npx mcp-web-hound configure --json set KEY=VAL  Set config values
+  npx mcp-web-hound export-logs         Export search logs (training dataset)
+  npx mcp-web-hound --help              Show this help
 
 Configuration:
-  ${ENV_PATH}          Main config (auto-created on first run, edit with configure tool)
+  ${ENV_PATH}          Main config (auto-created, edit via \`npx mcp-web-hound configure\`)
   ${cwdEnv}             Per-project overrides (optional)
 
-  ALWAYS use "npx mcp-web-hound-configure --json set" to change settings.
-
-Commands:
-  npx mcp-web-hound-configure                  Interactive settings editor
-  npx mcp-web-hound-configure --json get       List all settings (machine-readable JSON)
-  npx mcp-web-hound-configure --json set KEY=VAL   Apply settings (machine-readable JSON)
-  npx mcp-web-hound-export-logs                Export search log entries (training dataset)
-  npx mcp-web-hound-export-logs --help         Export tool options
+  ALWAYS use "npx mcp-web-hound configure --json set" to change settings.
 
 OpenCode setup (opencode.json):
   "web_search": {
@@ -68,9 +65,6 @@ Claude Code setup (claude.json):
     }
   }
 
-For automated setup by AI agents:
-  mcp-web-hound-configure --help
-
 Docs: ${repoUrl}
 `);
 }
@@ -78,14 +72,20 @@ Docs: ${repoUrl}
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
 
-  if (args.includes('--help') || args.includes('-h')) {
-    printHelp();
+  if (args[0] === 'configure') {
+    const { main: configureMain } = await import('./cli/configure.js');
+    configureMain(args.slice(1));
     return;
   }
 
-  if (args[0] === 'configure') {
-    const { main: configureMain } = await import('./cli/configure.js');
-    configureMain();
+  if (args[0] === 'export-logs') {
+    const { main: exportLogsMain } = await import('./cli/export-logs.js');
+    exportLogsMain(args.slice(1));
+    return;
+  }
+
+  if (args.includes('--help') || args.includes('-h')) {
+    printHelp();
     return;
   }
   const server = new McpServer(

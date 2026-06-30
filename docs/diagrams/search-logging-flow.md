@@ -157,23 +157,23 @@ Each row is a self-contained, atomic training sample — no joins, no orphaned d
 
 ## CLI Export Tool
 
-The package ships with `mcp-web-hound-export-logs` for command-line export:
+The package ships with `mcp-web-hound export-logs` for command-line export:
 
 ```bash
 # All entries (JSON)
-npx mcp-web-hound-export-logs
+npx mcp-web-hound export-logs
 
 # Only training-ready entries (with agent_usage)
-npx mcp-web-hound-export-logs --export
+npx mcp-web-hound export-logs --export
 
 # Training dataset in JSONL format (one JSON object per line)
-npx mcp-web-hound-export-logs --export --jsonl > training-data.jsonl
+npx mcp-web-hound export-logs --export --jsonl > training-data.jsonl
 
 # Custom database path
-npx mcp-web-hound-export-logs --db ./data/search.db --export
+npx mcp-web-hound export-logs --db ./data/search.db --export
 
 # Help
-npx mcp-web-hound-export-logs --help
+npx mcp-web-hound export-logs --help
 ```
 
 The tool searches for the database in order:

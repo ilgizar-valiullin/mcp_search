@@ -13,12 +13,12 @@ MCP Web Hound — Search Log Export Tool
 Exports search log entries from the SQLite database for training dataset generation.
 
 Usage:
-  npx mcp-web-hound-export-logs                     Dump all search log entries (JSON)
-  npx mcp-web-hound-export-logs --export             Only entries with agent_usage (training subset)
-  npx mcp-web-hound-export-logs --jsonl              JSONL format (one JSON object per line)
-  npx mcp-web-hound-export-logs --export --jsonl     Training dataset in JSONL format
-  npx mcp-web-hound-export-logs --db <path>          Specify a custom database path
-  npx mcp-web-hound-export-logs --help               Show this help
+  npx mcp-web-hound export-logs                     Dump all search log entries (JSON)
+  npx mcp-web-hound export-logs --export             Only entries with agent_usage (training subset)
+  npx mcp-web-hound export-logs --jsonl              JSONL format (one JSON object per line)
+  npx mcp-web-hound export-logs --export --jsonl     Training dataset in JSONL format
+  npx mcp-web-hound export-logs --db <path>          Specify a custom database path
+  npx mcp-web-hound export-logs --help               Show this help
 
 Database search order (unless --db is provided):
   1. ./data/search.db                          (project-local)
@@ -31,14 +31,14 @@ Export filter:
              were actually used. This is the training-ready subset.
 
 Examples:
-  npx mcp-web-hound-export-logs
-  npx mcp-web-hound-export-logs --export --jsonl > training-data.jsonl
-  npx mcp-web-hound-export-logs --db ./data/search.db --export
+  npx mcp-web-hound export-logs
+  npx mcp-web-hound export-logs --export --jsonl > training-data.jsonl
+  npx mcp-web-hound export-logs --db ./data/search.db --export
 `);
 }
 
-function main(): void {
-  const args = process.argv.slice(2);
+export function main(argv?: string[]): void {
+  const args = argv ?? process.argv.slice(2);
 
   if (args.includes('--help') || args.includes('-h')) {
     printHelp();
@@ -113,4 +113,7 @@ function main(): void {
   db.close();
 }
 
-main();
+const isDirectEntry = process.argv[1]?.split(/[/\\]/).pop()?.startsWith('export-logs');
+if (isDirectEntry) {
+  main();
+}

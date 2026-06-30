@@ -630,8 +630,8 @@ function runInteractive(fields: FieldDef[], env: Record<string, string>): void {
   redraw();
 }
 
-export function main(): void {
-  const args = process.argv.slice(2);
+export function main(argv?: string[]): void {
+  const args = argv ?? process.argv.slice(2);
 
   if (args.includes('--help') || args.includes('-h')) {
     printHelp();
@@ -667,28 +667,28 @@ Configuration:
   ${ENV_PATH}            Main config (written by this tool)
   ${cwdEnv}               Per-project overrides (optional)
 
-  ALWAYS use npx when running: npx mcp-web-hound-configure --json set ...
+  ALWAYS use npx when running: npx mcp-web-hound configure --json set ...
 
 Usage:
-  npx mcp-web-hound-configure                  Interactive settings editor (TUI)
-  npx mcp-web-hound-configure --help            Show this help
+  npx mcp-web-hound configure                  Interactive settings editor (TUI)
+  npx mcp-web-hound configure --help            Show this help
 
 Machine-readable JSON (for AI agents):
-  npx mcp-web-hound-configure --json get        List all config fields with
+  npx mcp-web-hound configure --json get        List all config fields with
                                                 descriptions, types, defaults,
                                                 current values, and sections.
                                                 Output: JSON array on stdout.
 
-  npx mcp-web-hound-configure --json set KEY=VALUE [KEY=VALUE...]
+  npx mcp-web-hound configure --json set KEY=VALUE [KEY=VALUE...]
                                                 Set one or more config values.
                                                 Validates all values against the
                                                 schema before writing any.
                                                 Output: JSON result on stdout.
 
   Examples:
-    npx mcp-web-hound-configure --json get
-    npx mcp-web-hound-configure --json set BRAVE_API_KEY=abc123
-    npx mcp-web-hound-configure --json set DDG_ENABLED=false GITHUB_TOKEN=ghp_xxx
+    npx mcp-web-hound configure --json get
+    npx mcp-web-hound configure --json set BRAVE_API_KEY=abc123
+    npx mcp-web-hound configure --json set DDG_ENABLED=false GITHUB_TOKEN=ghp_xxx
 `);
 }
 

@@ -6,19 +6,19 @@ Config is split across two `.env` files:
 
 | Tier | File | Purpose |
 |------|------|---------|
-| **Server** | `~/.config/mcp-web-hound/.env` | Main config — written by `mcp-web-hound-configure` |
+| **Server** | `~/.config/mcp-web-hound/.env` | Main config — written by `mcp-web-hound configure` |
 | **Project** | `<cwd>/.env` | Optional per-folder overrides (individual keys only) |
 
 **AI agent rule:** Agents MUST write config ONLY to the server `.env` via
-`npx mcp-web-hound-configure --json set`. NEVER write to a project's `.env`.
+`npx mcp-web-hound configure --json set`. NEVER write to a project's `.env`.
 
 ## Configure tool
 
 ```bash
-npx mcp-web-hound-configure                  # Interactive TUI
-npx mcp-web-hound-configure --json get       # Machine-readable list of all 64 fields
-npx mcp-web-hound-configure --json set KEY=VALUE    # Set one or more values
-npx mcp-web-hound-configure --help                 # Full help
+npx mcp-web-hound configure                  # Interactive TUI
+npx mcp-web-hound configure --json get       # Machine-readable list of all 64 fields
+npx mcp-web-hound configure --json set KEY=VALUE    # Set one or more values
+npx mcp-web-hound configure --help                 # Full help
 ```
 
 ## Environment Variables
