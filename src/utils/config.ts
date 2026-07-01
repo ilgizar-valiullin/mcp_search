@@ -1,9 +1,9 @@
 import dotenv from 'dotenv';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, isAbsolute, resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ConfigSchema, type Config, type ProviderLimits } from './types.js';
-import { CONFIG_DIR, ENV_PATH } from './env-path.js';
+import { CONFIG_DIR, DATA_DIR, ENV_PATH } from './env-path.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -98,11 +98,8 @@ export function buildProviderLimits(parsed: Config): Record<string, ProviderLimi
 function loadConfig(): Config {
   const parsed = ConfigSchema.parse(process.env);
 
-  const dataDir = isAbsolute(parsed.DATA_DIR)
-    ? parsed.DATA_DIR
-    : resolve(process.cwd(), parsed.DATA_DIR);
-  if (!existsSync(dataDir)) {
-    mkdirSync(dataDir, { recursive: true });
+  if (!existsSync(DATA_DIR)) {
+    mkdirSync(DATA_DIR, { recursive: true });
   }
 
   const hasDdg = parsed.DDG_ENABLED;

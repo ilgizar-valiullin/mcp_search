@@ -9,7 +9,6 @@ vi.mock('../../../src/utils/config.js', () => ({
     DDG_DELAY_MS: 100,
     DDG_MAX_PER_MINUTE: 10,
     FETCH_USER_AGENT: 'SearchMCP/1.0',
-    DATA_DIR: './data',
     DB_FILENAME: 'search.db',
     BRAVE_API_KEY: undefined,
     BRAVE_DAILY_LIMIT: 60,

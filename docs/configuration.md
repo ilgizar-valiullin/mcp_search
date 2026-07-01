@@ -30,7 +30,7 @@ All settings via `.env` file or environment variables.
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `LOG_LEVEL` | `info` | Log level: debug, info, warn, error |
-| `DATA_DIR` | `./data` | SQLite database directory |
+| `DATA_DIR` | `~/.config/mcp-web-hound/data` | SQLite database directory (hardcoded) |
 | `DB_FILENAME` | `search.db` | Database file name |
 
 ### Provider Order & Execution
@@ -156,7 +156,7 @@ On startup, the server validates:
 
 1. **At least one provider available** — based on `PROVIDER_ORDER` and individual enable/API-key guards
 2. **API key format** — if provided, checks key format
-3. **DATA_DIR exists** — created if missing
+3. **DATA_DIR** — hardcoded to `~/.config/mcp-web-hound/data`, created if missing
 4. **SQLite works** — test query on startup
 5. **Embedding model** — loaded if `SEMANTIC_ENABLED=true`
 

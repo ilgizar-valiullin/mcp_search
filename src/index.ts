@@ -3,7 +3,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { config, buildProviderLimits } from './utils/config.js';
-import { ENV_PATH } from './utils/env-path.js';
+import { DATA_DIR, ENV_PATH } from './utils/env-path.js';
 import { logger } from './utils/logger.js';
 import { getStartupSummary } from './utils/config-help.js';
 import { SqliteCache } from './cache/sqlite.js';
@@ -127,7 +127,7 @@ Red flags: outdated versions without migration notes, unofficial sources for cri
 
   const cache = new SqliteCache();
   const budgetManager = new BudgetManager();
-  const rateLimitStore = new RateLimitStore(config.DATA_DIR, buildProviderLimits(config));
+  const rateLimitStore = new RateLimitStore(DATA_DIR, buildProviderLimits(config));
   const router = new ProviderRouter(rateLimitStore);
 
   let semanticCache: SemanticCache | undefined;
@@ -197,7 +197,7 @@ Red flags: outdated versions without migration notes, unofficial sources for cri
   });
 
   const summary = getStartupSummary(config);
-  logger.info({ summary, dataDir: config.DATA_DIR }, 'Starting MCP Web Hound');
+  logger.info({ summary, dataDir: DATA_DIR }, 'Starting MCP Web Hound');
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

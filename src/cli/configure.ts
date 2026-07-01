@@ -43,7 +43,7 @@ const SECTIONS: Section[] = [
     key: 'server',
     label: 'Server',
     description: 'Logging verbosity and data storage paths',
-    match: k => ['LOG_LEVEL', 'DATA_DIR', 'DB_FILENAME'].includes(k),
+    match: k => ['LOG_LEVEL', 'DB_FILENAME'].includes(k),
   },
   {
     key: 'search_providers',

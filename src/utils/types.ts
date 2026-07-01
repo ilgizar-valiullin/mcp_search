@@ -227,10 +227,8 @@ export interface SearchLogEntry {
 export const ConfigSchema = z.object({
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info')
     .describe('Logging verbosity'),
-  DATA_DIR: z.string().default('./data')
-    .describe('Directory for cache database (relative paths resolve from CWD)'),
   DB_FILENAME: z.string().default('search.db')
-    .describe('SQLite database file name inside DATA_DIR'),
+    .describe('SQLite database file name'),
 
   // --- Providers (free, no key) ---
   DDG_ENABLED: z.boolean().or(z.string().transform(v => v === 'true')).default(true)

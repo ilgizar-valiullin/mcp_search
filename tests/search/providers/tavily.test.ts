@@ -6,7 +6,6 @@ vi.mock('../../../src/utils/config.js', () => ({
     LOG_LEVEL: 'silent',
     TAVILY_API_KEY: 'tvly-test-key',
     TAVILY_DAILY_LIMIT: 30,
-    DATA_DIR: './data',
     DB_FILENAME: 'search.db',
     DDG_ENABLED: false,
     DDG_DELAY_MS: 100,

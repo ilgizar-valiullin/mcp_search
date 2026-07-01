@@ -32,7 +32,6 @@ describe('ConfigSchema', () => {
     const result = ConfigSchema.parse({});
     
     expect(result.LOG_LEVEL).toBe('info');
-    expect(result.DATA_DIR).toBe('./data');
     expect(result.DDG_ENABLED).toBe(true);
     expect(result.BUDGET_MAX_SEARCHES).toBe(15);
   });

@@ -6,7 +6,6 @@ vi.mock('../../../src/utils/config.js', () => ({
   config: {
     LOG_LEVEL: 'silent',
     FIRECRAWL_API_KEY: 'test-key',
-    DATA_DIR: './data',
     DB_FILENAME: 'search.db',
     DDG_ENABLED: false,
     DDG_DELAY_MS: 100,

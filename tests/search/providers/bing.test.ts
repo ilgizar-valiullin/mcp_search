@@ -10,7 +10,6 @@ vi.mock('../../../src/utils/config.js', () => ({
   config: {
     LOG_LEVEL: 'silent',
     BING_ENABLED: true,
-    DATA_DIR: './data',
     DB_FILENAME: 'search.db',
     DDG_ENABLED: false,
     DDG_DELAY_MS: 100,

@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import { resolve } from 'node:path';
 import { config } from '../utils/config.js';
+import { DATA_DIR } from '../utils/env-path.js';
 import { logger } from '../utils/logger.js';
 import type { CacheStats, SearchLogEntry, SearchResult } from '../utils/types.js';
 
@@ -34,7 +35,7 @@ export class SqliteCache {
   private db: Database.Database;
 
   constructor() {
-    const dbPath = resolve(config.DATA_DIR, config.DB_FILENAME);
+    const dbPath = resolve(DATA_DIR, config.DB_FILENAME);
     logger.info({ dbPath }, 'Initializing SQLite cache');
 
     this.db = new Database(dbPath);

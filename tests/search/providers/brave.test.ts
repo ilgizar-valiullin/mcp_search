@@ -6,7 +6,6 @@ vi.mock('../../../src/utils/config.js', () => ({
     LOG_LEVEL: 'silent',
     BRAVE_API_KEY: 'test-key',
     BRAVE_DAILY_LIMIT: 60,
-    DATA_DIR: './data',
     DB_FILENAME: 'search.db',
     DDG_ENABLED: false,
     DDG_DELAY_MS: 100,
