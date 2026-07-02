@@ -188,6 +188,14 @@ Red flags: outdated versions without migration notes, unofficial sources for cri
 
   process.on('SIGINT', async () => { await cleanup(); process.exit(0); });
   process.on('SIGTERM', async () => { await cleanup(); process.exit(0); });
+  process.stdin.on('end', () => {
+    logger.info('stdin closed, shutting down');
+    cleanup().then(() => process.exit(0));
+  });
+  process.stdin.on('error', (err) => {
+    logger.error({ err }, 'stdin error, shutting down');
+    cleanup().then(() => process.exit(1));
+  });
   process.on('uncaughtException', (err) => {
     logger.fatal({ err }, 'Uncaught exception');
     process.exit(1);
